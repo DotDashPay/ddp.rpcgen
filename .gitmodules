@@ -1,0 +1,3 @@
+[submodule "dotdashpay/api/common"]
+	path = dotdashpay/api/common
+	url = git@github.com:DotDashPay/ddp.api.common.git
