@@ -1,5 +1,7 @@
 tmp
 *~
+build
+bin
 
 # Protobufs
 *.pb.go
