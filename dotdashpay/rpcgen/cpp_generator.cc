@@ -127,13 +127,12 @@ string GetHeaderIncludes(const google::protobuf::FileDescriptor *file,
 void PrintHeaderClientMethodInterfaces(
     google::protobuf::io::Printer *printer,
     const google::protobuf::MethodDescriptor *method,
-    map<string, string> *vars) {
+    map<string, string> *vars) {  
   (*vars)["Method"] = method->name();
   (*vars)["Request"] = ddprpc_cpp_generator::ClassName(method->input_type(), true);
   (*vars)["Response"] = ddprpc_cpp_generator::ClassName(method->output_type(), true);
-
-  if (method->options().HasExtension(dotdashpay::api::common::has_update_response)
-      && method->options().GetExtension(dotdashpay::api::common::has_update_response)) {
+  
+  if (method->options().ExtensionSize(dotdashpay::api::common::update_response) > 0) {
     printer->Print(
         *vars,
         "virtual void $Method$(const $Request$& request, "
@@ -152,7 +151,7 @@ void PrintHeaderService(google::protobuf::io::Printer *printer,
                         const google::protobuf::ServiceDescriptor *service,
                         map<string, string> *vars) {
   (*vars)["Service"] = service->name();
-
+  
   printer->Print(*vars,
                  "class $Service$ {\n"
                  " public:\n");
