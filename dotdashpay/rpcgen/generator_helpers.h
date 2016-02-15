@@ -35,7 +35,9 @@
 #ifndef __DOTDASHPAY_RPCGEN_GENERATOR_HELPERS_H__
 #define __DOTDASHPAY_RPCGEN_GENERATOR_HELPERS_H__
 
+#include <dotdashpay/api/common/protobuf/api_common.pb.h>
 #include <google/protobuf/descriptor.h>
+#include <google/protobuf/descriptor.pb.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -165,6 +167,20 @@ inline MethodType GetMethodType(const google::protobuf::MethodDescriptor *method
       return METHODTYPE_NO_STREAMING;
     }
   }
+}
+
+inline bool IsConformant(const google::protobuf::FileDescriptor* file, std::string* error) {
+  for (int i = 0; i < file->service_count(); ++i) {
+    for (int j = 0; j < file->service(i)->method_count(); ++j) {
+      const google::protobuf::MethodDescriptor* method = file->service(i)->method(j);
+      if (!method->options().HasExtension(dotdashpay::api::common::completion_response)) {
+        (*error) = "Service [" + file->service(i)->name() + "] does not contain a completion response";
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 }  // namespace ddprpc_generator

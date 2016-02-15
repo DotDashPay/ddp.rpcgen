@@ -86,7 +86,7 @@ class CppGenerator : public google::protobuf::compiler::CodeGenerator {
     if (file->options().cc_generic_services()) {
       *error =
           "ddprpc compiler plugin does not work with generic "
-          "services. To generate cpp google APIs, please set \""
+          "services. To generate cpp APIs, please set \""
           "cc_generic_service = false\".";
       return false;
     }
@@ -115,6 +115,11 @@ class CppGenerator : public google::protobuf::compiler::CodeGenerator {
           return false;
         }
       }
+    }
+
+    // Ensure the protobuf file conforms to what we're expecting.
+    if (!ddprpc_generator::IsConformant(file, error)) {
+      return false;
     }
 
     string file_name = ddprpc_generator::StripProto(file->name());
