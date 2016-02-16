@@ -114,7 +114,8 @@ string GetHeaderIncludes(const google::protobuf::FileDescriptor *file,
     google::protobuf::io::StringOutputStream output_stream(&output);
     google::protobuf::io::Printer printer(&output_stream, '$');
     map<string, string> vars;
-    printer.Print(vars, "#import <Foundation/Foundation.h>\n");
+    printer.Print(vars, "#import <Foundation/Foundation.h>\n\n");
+    printer.Print(vars, "#import \"DDPCallback.h\"\n");
     printer.Print(vars, "\n");
   }
   return output;
@@ -140,7 +141,7 @@ void PrintHeaderClientMethodInterfaces(
   const vector<string> update_responses = ddprpc_generator::GetUpdateResponses(method);
 
   if (update_responses.size() > 0) {
-    printer->Print(*vars, "- (void) $Method$:(id)delegate onCompletion:(SEL)completionCallback");
+    printer->Print(*vars, "- (void) $Method$:(id)delegate onCompletion:(DDPCallback)completionCallback");
     PrintMethodSuffix(printer, is_declaration);
     if (!is_declaration) {
       printer->Indent();
@@ -150,10 +151,10 @@ void PrintHeaderClientMethodInterfaces(
     }
 
     printer->Print(
-        *vars, "- (void) $Method$:(id)delegate onUpdate:(SEL)updateCallback onCompletion:(SEL)completionCallback");
+        *vars, "- (void) $Method$:(id)delegate onUpdate:(DDPCallback)updateCallback onCompletion:(DDPCallback)completionCallback");
     PrintMethodSuffix(printer, is_declaration);
   } else {
-    printer->Print(*vars, "- (void) $Method$:(id)delegate onCompletion:(SEL)completionCallback");
+    printer->Print(*vars, "- (void) $Method$:(id)delegate onCompletion:(DDPCallback)completionCallback");
     PrintMethodSuffix(printer, is_declaration);
   }
 }
@@ -210,8 +211,6 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
   printer->Print(*vars, "if (!sent) {\n");
 
   printer->Indent();
-  printer->Print(
-      *vars, "DotDashPayCallback callback = (void *) [delegate methodForSelector:completionCallback];\n");
   printer->Print(*vars, "NSError* error = nil;\n");
   printer->Print(*vars, "if (!sent) {\n");
 
@@ -222,7 +221,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
 
   printer->Print(*vars, "}\n");
   printer->Print(
-      *vars, "callback(delegate, completionCallback, error, @{@\"event\": @\"RequestNotAcknowledged\"});\n");
+      *vars, "completionCallback(error, @{@\"event\": @\"RequestNotAcknowledged\"});\n");
   printer->Outdent();
 
   printer->Print(*vars, "} else {\n");
@@ -233,22 +232,17 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
     printer->Print(*vars, "if (updateCallback) {\n");
 
     printer->Indent();
-    printer->Print(*vars, "DotDashPayCallback callback = (void *) [delegate methodForSelector:updateCallback];\n");
-    printer->Print(*vars, "callback(delegate, updateCallback, nil, @{@\"event\": @\"RequestAcknowledged\"});\n");
+    printer->Print(*vars, "updateCallback(nil, @{@\"event\": @\"RequestAcknowledged\"});\n");
     for (int i = 0; i < update_responses.size(); ++i) {
       (*vars)["UpdateResponse"] = update_responses[i];
-      printer->Print(*vars,
-                     "[SignalManager on:@\"$UpdateResponse$\" performCallback:updateCallback "
-                     "withDelegate:delegate async:YES maxCalls:@1];\n");
+      printer->Print(*vars, "[SignalManager on:@\"$UpdateResponse$\" performCallback:updateCallback];\n");
     }
     printer->Outdent();
 
     printer->Print(*vars, "}\n");
   }
 
-  printer->Print(*vars,
-                 "[SignalManager on:@\"$CompletionResponse$\" performCallback:completionCallback "
-                 "withDelegate:delegate async:YES maxCalls:@1];\n");
+  printer->Print(*vars, "[SignalManager on:@\"$CompletionResponse$\" performCallback:completionCallback];\n");
   printer->Outdent();
 
   printer->Print(*vars, "}\n");
