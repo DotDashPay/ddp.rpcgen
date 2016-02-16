@@ -168,7 +168,7 @@ string GetHeaderService(const google::protobuf::ServiceDescriptor* service,
     google::protobuf::io::Printer printer(&output_stream, '$');
     map<string, string> vars;
 
-    vars["Service"] = service->name();
+    vars["Service"] = "DDP" + service->name();
     printer.Print(vars, "@protocol Communicator;\n\n");
     printer.Print(vars, "@interface $Service$ : NSObject {\n");
     printer.Indent();
@@ -192,7 +192,7 @@ string GetHeaderService(const google::protobuf::ServiceDescriptor* service,
 void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
                                       const google::protobuf::MethodDescriptor *method,
                                       map<string, string> *vars) {
-  (*vars)["ServiceName"] = method->service()->name();
+  (*vars)["ServiceName"] = "DDP" + method->service()->name();
   (*vars)["Method"] = ddprpc_generator::LowercaseFirstLetter(method->name());
   (*vars)["MethodName"] = method->name();
   (*vars)["CompletionResponse"] = ddprpc_generator::GetCompletionResponse(method);
@@ -261,7 +261,7 @@ string GetServiceImplementation(const google::protobuf::ServiceDescriptor* servi
     google::protobuf::io::Printer printer(&output_stream, '$');
     map<string, string> vars;
 
-    vars["Service"] = service->name();
+    vars["Service"] = "DDP" + service->name();
     printer.Print(vars, "@implementation $Service$\n");
     printer.Print(vars, "\n");
     printer.Print(vars, "- (id) initWithCommunicator:(id<Communicator>)communicator {\n");
@@ -308,7 +308,7 @@ string GetSourceIncludes(const google::protobuf::ServiceDescriptor* service, con
     google::protobuf::io::Printer printer(&output_stream, '$');
     map<string, string> vars;
 
-    vars["HeaderFilename"] = service->name() + ".h";
+    vars["HeaderFilename"] = "DDP" + service->name() + ".h";
     printer.Print(vars, "#import \"$HeaderFilename$\"\n");
     printer.Print(vars, "\n");
     printer.Print(vars, "#import \"Communicator.h\"\n");

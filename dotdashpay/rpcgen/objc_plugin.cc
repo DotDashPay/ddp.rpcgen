@@ -99,7 +99,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
 
     for (int i = 0; i < file->service_count(); ++i) {
       const google::protobuf::ServiceDescriptor* service = file->service(i);
-      string file_name = ddprpc_generator::CapitalizeFirstLetter(service->name());
+      string file_name = "DDP" + ddprpc_generator::CapitalizeFirstLetter(service->name());
 
       string header_code =
           ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
