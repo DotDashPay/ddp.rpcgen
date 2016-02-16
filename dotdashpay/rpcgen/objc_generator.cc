@@ -221,7 +221,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
 
   printer->Print(*vars, "}\n");
   printer->Print(
-      *vars, "completionCallback(error, @{@\"event\": @\"RequestNotAcknowledged\"});\n");
+      *vars, "completionCallback(error, @{@\"response_name\": @\"RequestNotAcknowledged\"});\n");
   printer->Outdent();
 
   printer->Print(*vars, "} else {\n");
@@ -232,7 +232,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
     printer->Print(*vars, "if (updateCallback) {\n");
 
     printer->Indent();
-    printer->Print(*vars, "updateCallback(nil, @{@\"event\": @\"RequestAcknowledged\"});\n");
+    printer->Print(*vars, "updateCallback(nil, @{@\"response_name\": @\"RequestAcknowledged\"});\n");
     for (int i = 0; i < update_responses.size(); ++i) {
       (*vars)["UpdateResponse"] = update_responses[i];
       printer->Print(*vars, "[SignalManager on:@\"$UpdateResponse$\" performCallback:updateCallback];\n");
