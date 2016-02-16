@@ -15,7 +15,7 @@
      --plugin=protoc-gen-ddprpc=ddprpc_objc_plugin \
      --ddprpc_out=OUT_DIR services.proto
    ```
-   
+
    This will generate an interface for each service defined in
    `services.proto` that an API implementation can "subclassed" to
    ensure the implementation is consistent with the services defiend
@@ -27,17 +27,17 @@
    `spec/generate-services-proto.js`).
 
    ===============================================================
-   
+
    This file borrows heavily from the grpc library. The LICENSE for
    that library is included because of the high degree of similarity:
 
    Copyright 2015, Google Inc.
    All rights reserved.
-   
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
    met:
-   
+
    * Redistributions of source code must retain the above copyright
    notice, this list of conditions and the following disclaimer.
    * Redistributions in binary form must reproduce the above
@@ -97,18 +97,33 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
       return false;
     }
 
-    string file_name = ddprpc_generator::StripProto(file->name());
+    for (int i = 0; i < file->service_count(); ++i) {
+      const google::protobuf::ServiceDescriptor* service = file->service(i);
+      string file_name = ddprpc_generator::CapitalizeFirstLetter(service->name());
 
-    string header_code =
-        ddprpc_objc_generator::GetHeaderPrologue(file, generator_parameters) +
-        ddprpc_objc_generator::GetHeaderServices(file, generator_parameters) +
-        ddprpc_objc_generator::GetHeaderEpilogue(file, generator_parameters);
-    std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> header_output(
-        context->Open(file_name + ".ddprpc.pb.h"));
-    google::protobuf::io::CodedOutputStream header_coded_out(
-        header_output.get());
-    header_coded_out.WriteRaw(header_code.data(), header_code.size());
-    
+      string header_code =
+          ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
+          ddprpc_objc_generator::GetHeaderIncludes(file, generator_parameters) +
+          ddprpc_objc_generator::GetHeaderService(service, generator_parameters) +
+          ddprpc_objc_generator::GetHeaderEpilogue(file, generator_parameters);
+      std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> header_output(
+          context->Open(file_name + ".h"));
+      google::protobuf::io::CodedOutputStream header_coded_out(
+          header_output.get());
+      header_coded_out.WriteRaw(header_code.data(), header_code.size());
+
+      string source_code =
+          ddprpc_objc_generator::GetPrologue(file, generator_parameters, false) +
+          ddprpc_objc_generator::GetSourceIncludes(service, generator_parameters) +
+          ddprpc_objc_generator::GetServiceImplementation(service, generator_parameters);
+      std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> source_output(
+          context->Open(file_name + ".m"));
+      google::protobuf::io::CodedOutputStream source_coded_out(
+          source_output.get());
+      source_coded_out.WriteRaw(source_code.data(), source_code.size());
+    }
+
+
     return true;
   }
 

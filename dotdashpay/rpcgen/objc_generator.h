@@ -1,14 +1,14 @@
 /**
    This file borrows heavily from the grpc library. The LICENSE for
    that library is included because of the high degree of similarity:
-   
+
    Copyright 2015, Google Inc.
    All rights reserved.
-   
+
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
    met:
-   
+
    * Redistributions of source code must retain the above copyright
    notice, this list of conditions and the following disclaimer.
    * Redistributions in binary form must reproduce the above
@@ -18,7 +18,7 @@
    * Neither the name of Google Inc. nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
-   
+
    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -47,16 +47,23 @@ struct Parameters {
 };
 
 // Return the prologue of the generated header file.
-std::string GetHeaderPrologue(const google::protobuf::FileDescriptor *file,
-                              const Parameters &params);
+std::string GetPrologue(
+    const google::protobuf::FileDescriptor *file, const Parameters &params, const bool& is_header);
+
+// Return the includes for the generated header file.
+std::string GetHeaderIncludes(const google::protobuf::FileDescriptor *file, const Parameters &params);
 
 // Return the epilogue of the generated header file.
-std::string GetHeaderEpilogue(const google::protobuf::FileDescriptor *file,
-                              const Parameters &params);
+std::string GetHeaderEpilogue(const google::protobuf::FileDescriptor *file, const Parameters &params);
 
 // Return the services for generated header file.
-std::string GetHeaderServices(const google::protobuf::FileDescriptor *file,
-                              const Parameters &params);
+std::string GetHeaderService(const google::protobuf::ServiceDescriptor* service, const Parameters &params);
+
+// Return the includes for the generated source file.
+std::string GetSourceIncludes(const google::protobuf::ServiceDescriptor* service, const Parameters &params);
+
+// Return the implementation of the service with name.
+std::string GetServiceImplementation(const google::protobuf::ServiceDescriptor* service, const Parameters &params);
 
 }  // namespace ddprpc_objc_generator
 
