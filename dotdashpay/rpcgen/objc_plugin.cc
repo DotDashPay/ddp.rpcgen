@@ -103,7 +103,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
 
       string header_code =
           ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
-          ddprpc_objc_generator::GetHeaderIncludes(file, generator_parameters) +
+          ddprpc_objc_generator::GetHeaderIncludes(service, generator_parameters) +
           ddprpc_objc_generator::GetHeaderService(service, generator_parameters) +
           ddprpc_objc_generator::GetHeaderEpilogue(file, generator_parameters);
       std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> header_output(

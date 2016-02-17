@@ -106,7 +106,7 @@ string GetPrologue(const google::protobuf::FileDescriptor *file,
   return output;
 }
 
-string GetHeaderIncludes(const google::protobuf::FileDescriptor *file,
+string GetHeaderIncludes(const google::protobuf::ServiceDescriptor* service,
                          const Parameters &params) {
   string output;
   {
@@ -114,8 +114,11 @@ string GetHeaderIncludes(const google::protobuf::FileDescriptor *file,
     google::protobuf::io::StringOutputStream output_stream(&output);
     google::protobuf::io::Printer printer(&output_stream, '$');
     map<string, string> vars;
+
+    vars["ServiceMessagesIncludeFile"] = service->name() + ".pbobjc.h";
     printer.Print(vars, "#import <Foundation/Foundation.h>\n\n");
     printer.Print(vars, "#import \"DDPCallback.h\"\n");
+    printer.Print(vars, "#import \"$ServiceMessagesIncludeFile$\"\n");
     printer.Print(vars, "\n");
   }
   return output;
@@ -135,26 +138,30 @@ void PrintHeaderClientMethodInterfaces(
     map<string, string> *vars,
     const bool& is_declaration) {
   (*vars)["Method"] = ddprpc_generator::LowercaseFirstLetter(method->name());
+  (*vars)["MethodPayload"] = "DDP" + ddprpc_generator::CapitalizeFirstLetter(method->name()) + "Payload";
   (*vars)["Request"] = ClassName(method->input_type());
   (*vars)["Response"] = ClassName(method->output_type());
   (*vars)["CompletionResponse"] = ddprpc_generator::GetCompletionResponse(method);
   const vector<string> update_responses = ddprpc_generator::GetUpdateResponses(method);
 
   if (update_responses.size() > 0) {
-    printer->Print(*vars, "- (void) $Method$:(id)delegate onCompletion:(DDPCallback)completionCallback");
+    printer->Print(*vars,
+                   "- (void) $Method$:($MethodPayload$*)payload onCompletion:(DDPCallback)completionCallback");
     PrintMethodSuffix(printer, is_declaration);
     if (!is_declaration) {
       printer->Indent();
-      printer->Print(*vars, "[self $Method$:delegate onUpdate:nil onCompletion:completionCallback];\n");
+      printer->Print(*vars, "[self $Method$:payload onUpdate:nil onCompletion:completionCallback];\n");
       printer->Outdent();
       printer->Print(*vars, "}\n\n");
     }
 
-    printer->Print(
-        *vars, "- (void) $Method$:(id)delegate onUpdate:(DDPCallback)updateCallback onCompletion:(DDPCallback)completionCallback");
+    printer->Print(*vars,
+                   "- (void) $Method$:($MethodPayload$*)payload onUpdate:(DDPCallback)updateCallback "
+                   "onCompletion:(DDPCallback)completionCallback");
     PrintMethodSuffix(printer, is_declaration);
   } else {
-    printer->Print(*vars, "- (void) $Method$:(id)delegate onCompletion:(DDPCallback)completionCallback");
+    printer->Print(*vars,
+                   "- (void) $Method$:($MethodPayload$*)payload onCompletion:(DDPCallback)completionCallback");
     PrintMethodSuffix(printer, is_declaration);
   }
 }
@@ -169,14 +176,14 @@ string GetHeaderService(const google::protobuf::ServiceDescriptor* service,
     map<string, string> vars;
 
     vars["Service"] = "DDP" + service->name();
-    printer.Print(vars, "@protocol Communicator;\n\n");
+    printer.Print(vars, "@protocol Adapter;\n\n");
     printer.Print(vars, "@interface $Service$ : NSObject {\n");
     printer.Indent();
-    printer.Print(vars, "id<Communicator> _communicator;\n");
+    printer.Print(vars, "id<Adapter> _adapter;\n");
     printer.Outdent();
     printer.Print(vars, "}\n\n");
 
-    printer.Print(vars, "- (id) initWithCommunicator:(id<Communicator>)communicator;\n\n");
+    printer.Print(vars, "- (id) initWithAdapter:(id<Adapter>)adapter;\n\n");
 
     for (int i = 0; i < service->method_count(); ++i) {
       PrintHeaderClientMethodInterfaces(&printer, service->method(i), &vars, true);
@@ -204,7 +211,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
   }
   printer->Print(*vars, "[SignalManager clear:@\"$CompletionResponse$\"];\n");
 
-  printer->Print(*vars, "[SerialProtocol sendMessage:[EventFormat encode:@\"$MethodName$\"] viaCommunicator:_communicator completionBlock:^(BOOL sent) {\n");
+  printer->Print(*vars, "[SerialProtocol sendMessage:[EventFormat encode:@\"$MethodName$\"] viaAdapter:_adapter completionBlock:^(BOOL sent) {\n");
 
   printer->Indent();
   printer->Print(*vars, "VLOG(2, @\"$ServiceName$::$MethodName$: %d\", sent);\n");
@@ -264,11 +271,11 @@ string GetServiceImplementation(const google::protobuf::ServiceDescriptor* servi
     vars["Service"] = "DDP" + service->name();
     printer.Print(vars, "@implementation $Service$\n");
     printer.Print(vars, "\n");
-    printer.Print(vars, "- (id) initWithCommunicator:(id<Communicator>)communicator {\n");
+    printer.Print(vars, "- (id) initWithAdapter:(id<Adapter>)adapter {\n");
     printer.Indent();
     printer.Print(vars, "if ((self = [super init])) {\n");
     printer.Indent();
-    printer.Print(vars, "_communicator = communicator;\n");
+    printer.Print(vars, "_adapter = adapter;\n");
     printer.Outdent();
     printer.Print(vars, "}\n");
     printer.Print(vars, "\n");
@@ -311,7 +318,7 @@ string GetSourceIncludes(const google::protobuf::ServiceDescriptor* service, con
     vars["HeaderFilename"] = "DDP" + service->name() + ".h";
     printer.Print(vars, "#import \"$HeaderFilename$\"\n");
     printer.Print(vars, "\n");
-    printer.Print(vars, "#import \"Communicator.h\"\n");
+    printer.Print(vars, "#import \"Adapter.h\"\n");
     printer.Print(vars, "#import \"ddp.api.h\"\n");
     printer.Print(vars, "#import \"EventFormat.h\"\n");
     printer.Print(vars, "#import \"Logging.h\"\n");

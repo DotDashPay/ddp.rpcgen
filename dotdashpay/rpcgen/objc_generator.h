@@ -51,7 +51,7 @@ std::string GetPrologue(
     const google::protobuf::FileDescriptor *file, const Parameters &params, const bool& is_header);
 
 // Return the includes for the generated header file.
-std::string GetHeaderIncludes(const google::protobuf::FileDescriptor *file, const Parameters &params);
+std::string GetHeaderIncludes(const google::protobuf::ServiceDescriptor* service, const Parameters &params);
 
 // Return the epilogue of the generated header file.
 std::string GetHeaderEpilogue(const google::protobuf::FileDescriptor *file, const Parameters &params);
