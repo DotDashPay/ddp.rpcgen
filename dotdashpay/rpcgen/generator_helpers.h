@@ -39,6 +39,7 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/descriptor.pb.h>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -183,16 +184,22 @@ inline bool IsConformant(const google::protobuf::FileDescriptor* file, std::stri
   return true;
 }
 
-inline std::vector<std::string> GetUpdateResponses(const google::protobuf::MethodDescriptor* method) {
+inline std::vector<std::string> GetUpdateResponses(
+    const google::protobuf::MethodDescriptor* method, const bool& get_package = false) {
   std::vector<std::string> responses;
+  const int index = get_package ? 0 : 1;
   for (int i = 0; i < method->options().ExtensionSize(dotdashpay::api::common::update_response); ++i) {
-    responses.push_back(method->options().GetExtension(dotdashpay::api::common::update_response, i));
+    const std::string response_name = method->options().GetExtension(dotdashpay::api::common::update_response, i);
+    responses.push_back(tokenize(response_name, ".")[index]);
   }
   return responses;
 }
 
-inline std::string GetCompletionResponse(const google::protobuf::MethodDescriptor* method) {
-  return method->options().GetExtension(dotdashpay::api::common::completion_response);
+inline std::string GetCompletionResponse(
+    const google::protobuf::MethodDescriptor* method, bool get_package = false) {
+  const int index = get_package ? 0 : 1;
+  const std::string response_name = method->options().GetExtension(dotdashpay::api::common::completion_response);
+  return tokenize(response_name, ".")[index];
 }
 
 
