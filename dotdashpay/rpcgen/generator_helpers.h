@@ -202,6 +202,27 @@ inline std::string GetCompletionResponse(
   return tokenize(response_name, ".")[index];
 }
 
+inline std::set<std::string> GetUniqueResponses(const google::protobuf::ServiceDescriptor* service,
+                                                const bool& get_package = false) {
+  std::set<std::string> responses;
+  for (int j = 0; j < service->method_count(); ++j) {
+    const google::protobuf::MethodDescriptor* method = service->method(j);
+    const std::vector<std::string> method_responses = ddprpc_generator::GetUpdateResponses(method, get_package);
+    responses.insert(method_responses.begin(), method_responses.end());
+    responses.insert(ddprpc_generator::GetCompletionResponse(method, get_package));
+  }
+  return responses;
+}
+
+inline std::set<std::string> GetUniqueResponses(const google::protobuf::FileDescriptor* file,
+                                                const bool& get_package = false) {
+  std::set<std::string> responses;
+  for (int i = 0; i < file->service_count(); ++i) {
+    const std::set<std::string> service_responses = GetUniqueResponses(file->service(i), get_package);
+    responses.insert(service_responses.begin(), service_responses.end());
+  }
+  return responses;
+}
 
 }  // namespace ddprpc_generator
 

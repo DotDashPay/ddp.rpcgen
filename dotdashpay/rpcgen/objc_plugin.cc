@@ -11,9 +11,9 @@
    Use the plugin by executing the following command:
 
    ```bash
-   protoc \
-     --plugin=protoc-gen-ddprpc=ddprpc_objc_plugin \
-     --ddprpc_out=OUT_DIR services.proto
+   protoc                                          \
+   --plugin=protoc-gen-ddprpc=ddprpc_objc_plugin   \
+   --ddprpc_out=OUT_DIR services.proto
    ```
 
    This will generate an interface for each service defined in
@@ -59,7 +59,7 @@
    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- **/
+**/
 #include "objc_generator.h"
 
 #include <dotdashpay/api/common/protobuf/api_common.pb.h>
@@ -97,6 +97,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
       return false;
     }
 
+    // Build each of the "service implementations".
     for (int i = 0; i < file->service_count(); ++i) {
       const google::protobuf::ServiceDescriptor* service = file->service(i);
       string file_name = "DDP" + ddprpc_generator::CapitalizeFirstLetter(service->name());
@@ -123,6 +124,22 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
       source_coded_out.WriteRaw(source_code.data(), source_code.size());
     }
 
+    // Build the simulator.
+    string file_name = "DDPSimulatorManager";
+
+    string header_code =
+        ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
+        ddprpc_objc_generator::GetSimulatorHeader(file, generator_parameters);
+    std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> header_output(context->Open(file_name + ".h"));
+    google::protobuf::io::CodedOutputStream header_coded_out(header_output.get());
+    header_coded_out.WriteRaw(header_code.data(), header_code.size());
+
+    string source_code =
+        ddprpc_objc_generator::GetPrologue(file, generator_parameters, false) +
+        ddprpc_objc_generator::GetSimulatorSource(file, generator_parameters);
+    std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> source_output(context->Open(file_name + ".m"));
+    google::protobuf::io::CodedOutputStream source_coded_out(source_output.get());
+    source_coded_out.WriteRaw(source_code.data(), source_code.size());
 
     return true;
   }

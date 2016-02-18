@@ -65,6 +65,12 @@ std::string GetSourceIncludes(const google::protobuf::ServiceDescriptor* service
 // Return the implementation of the service with name.
 std::string GetServiceImplementation(const google::protobuf::ServiceDescriptor* service, const Parameters &params);
 
+// Return the simulator header.
+std::string GetSimulatorHeader(const google::protobuf::FileDescriptor* file, const Parameters &params);
+
+// Return the simulator implementation.
+std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, const Parameters &params);
+
 }  // namespace ddprpc_objc_generator
 
 #endif  // __DOTDASHPAY_RPCGEN_OBJC_GENERATOR_H__
