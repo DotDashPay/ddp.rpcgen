@@ -154,6 +154,8 @@ string GetSimulatorHeader(const google::protobuf::FileDescriptor* file,
 
     printer.Print(vars, "@interface DDPSimulatorManager : NSObject\n\n");
 
+    printer.Print(vars, "+ (void) setResponse:(NSString*)responseName withResponseData:(id)responseData;\n\n");
+    printer.Print(vars, "+ (void) loadSimulatorSpecification:(NSString*)name;\n\n");
     printer.Print(vars, "+ (NSArray*) getResponsesForRequest:(NSString*)request;\n\n");
     PrintSimulatorMethods(&printer, file, &vars, true);
     printer.Print(vars, "@end\n");
@@ -174,6 +176,18 @@ std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, con
     printer.Print(vars, "#import \"SimulatorHelper.h\"\n\n");
 
     printer.Print(vars, "@implementation DDPSimulatorManager\n\n");
+
+    printer.Print(vars, "+ (void) loadSimulatorSpecification:(NSString*)name {\n");
+    printer.Indent();
+    printer.Print(vars, "[SimulatorHelper loadSimulatorSpecification:name];\n");
+    printer.Outdent();
+    printer.Print(vars, "}\n\n");
+
+    printer.Print(vars, "+ (void) setResponse:(NSString*)responseName withResponseData:(id)responseData {\n");
+    printer.Indent();
+    printer.Print(vars, "[SimulatorHelper setResponse:responseName withResponseData:responseData];\n");
+    printer.Outdent();
+    printer.Print(vars, "}\n\n");
 
     printer.Print(vars, "+ (NSArray*) getResponsesForRequest:(NSString*)request {\n");
     printer.Indent();
