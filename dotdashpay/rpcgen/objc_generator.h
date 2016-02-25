@@ -71,6 +71,9 @@ std::string GetSimulatorHeader(const google::protobuf::FileDescriptor* file, con
 // Return the simulator implementation.
 std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, const Parameters &params);
 
+// Return the examples template.
+std::string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const Parameters &params);
+
 }  // namespace ddprpc_objc_generator
 
 #endif  // __DOTDASHPAY_RPCGEN_OBJC_GENERATOR_H__

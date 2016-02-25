@@ -125,21 +125,33 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
     }
 
     // Build the simulator.
-    string file_name = "DDPSimulatorManager";
+    {
+      string file_name = "DDPSimulatorManager";
 
-    string header_code =
-        ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
-        ddprpc_objc_generator::GetSimulatorHeader(file, generator_parameters);
-    std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> header_output(context->Open(file_name + ".h"));
-    google::protobuf::io::CodedOutputStream header_coded_out(header_output.get());
-    header_coded_out.WriteRaw(header_code.data(), header_code.size());
+      string header_code =
+          ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
+          ddprpc_objc_generator::GetSimulatorHeader(file, generator_parameters);
+      std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> header_output(context->Open(file_name + ".h"));
+      google::protobuf::io::CodedOutputStream header_coded_out(header_output.get());
+      header_coded_out.WriteRaw(header_code.data(), header_code.size());
 
-    string source_code =
-        ddprpc_objc_generator::GetPrologue(file, generator_parameters, false) +
-        ddprpc_objc_generator::GetSimulatorSource(file, generator_parameters);
-    std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> source_output(context->Open(file_name + ".m"));
-    google::protobuf::io::CodedOutputStream source_coded_out(source_output.get());
-    source_coded_out.WriteRaw(source_code.data(), source_code.size());
+      string source_code =
+          ddprpc_objc_generator::GetPrologue(file, generator_parameters, false) +
+          ddprpc_objc_generator::GetSimulatorSource(file, generator_parameters);
+      std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> source_output(context->Open(file_name + ".m"));
+      google::protobuf::io::CodedOutputStream source_coded_out(source_output.get());
+      source_coded_out.WriteRaw(source_code.data(), source_code.size());
+    }
+
+    // Build the examples template.
+    {
+      string file_name = "APIExamples.template.m";
+
+      string source_code = ddprpc_objc_generator::GetExamplesTemplate(file, generator_parameters);
+      std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> source_output(context->Open(file_name));
+      google::protobuf::io::CodedOutputStream source_coded_out(source_output.get());
+      source_coded_out.WriteRaw(source_code.data(), source_code.size());
+    }
 
     return true;
   }

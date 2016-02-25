@@ -224,6 +224,22 @@ inline std::set<std::string> GetUniqueResponses(const google::protobuf::FileDesc
   return responses;
 }
 
+inline const google::protobuf::Descriptor* FindMessageByName(const google::protobuf::FileDescriptor* file,
+                                                             const std::string& messageName) {
+  const google::protobuf::Descriptor* response = file->FindMessageTypeByName(messageName);
+  if (response == NULL) {
+    for (int i = 0; i < file->dependency_count(); ++i) {
+      const google::protobuf::FileDescriptor* dep = file->dependency(i);
+      response = dep->FindMessageTypeByName(messageName);
+      if (response != NULL) {
+        break;
+      }
+    }
+  }
+
+  return response;
+}
+
 }  // namespace ddprpc_generator
 
 #endif  // __DOTDASHPAY_RPCGEN_GENERATOR_HELPERS_H__
