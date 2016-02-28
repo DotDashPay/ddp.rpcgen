@@ -313,11 +313,11 @@ void PrintHeaderClientMethodInterfaces(
   printer->Print(
       *vars,
       "- (void) $Method$:($MethodArgs$*)args "
-      "on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))completionCallback");
+      "on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
   PrintMethodSuffix(printer, is_declaration);
   if (!is_declaration) {
     printer->Indent();
-    printer->Print(*vars, "[self $Method$:args onError:nil on$CompletionResponseName$:completionCallback];\n");
+    printer->Print(*vars, "[self $Method$:args onError:nil on$CompletionResponseName$:callback$CompletionResponseName$];\n");
     printer->Outdent();
     printer->Print(*vars, "}\n\n");
   }
@@ -325,31 +325,31 @@ void PrintHeaderClientMethodInterfaces(
   printer->Print(
       *vars,
       "- (void) $Method$:($MethodArgs$*)args "
-      "onError:(void(^)(ErrorResponse*))errorCallback on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))completionCallback");
+      "onError:(void(^)(ErrorResponse*))callbackError on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
   PrintMethodSuffix(printer, is_declaration);
 
   if (update_responses.size() > 0) {
     if (!is_declaration) {
       printer->Indent();
-      printer->Print(*vars, "[self $Method$:args onError:errorCallback");
+      printer->Print(*vars, "[self $Method$:args onError:callbackError");
       for (int i = 0; i < update_responses.size(); ++i) {
         (*vars)["UpdateResponse"] = update_responses[i];
         printer->Print(*vars, " on$UpdateResponse$:nil");
       }
-      printer->Print(*vars, " on$CompletionResponseName$:completionCallback];\n");
+      printer->Print(*vars, " on$CompletionResponseName$:callback$CompletionResponseName$];\n");
       printer->Outdent();
       printer->Print(*vars, "}\n\n");
     }
 
-    printer->Print(*vars, "- (void) $Method$:($MethodArgs$*)args onError:(void(^)(ErrorResponse*))errorCallback");
+    printer->Print(*vars, "- (void) $Method$:($MethodArgs$*)args onError:(void(^)(ErrorResponse*))callbackError");
     for (int i = 0; i < update_responses.size(); ++i) {
       (*vars)["UpdateResponseName"] = update_responses[i];
       (*vars)["UpdateResponseClass"] = ddprpc_objc_generator::GetClassPrefix() + (update_responses[i]);
       printer->Print(
-          *vars, " on$UpdateResponseName$:(void(^)($UpdateResponseClass$*))$UpdateResponseClass$callback");
+          *vars, " on$UpdateResponseName$:(void(^)($UpdateResponseClass$*))callback$UpdateResponseClass$");
     }
     printer->Print(
-        *vars," on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))completionCallback");
+        *vars," on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
     PrintMethodSuffix(printer, is_declaration);
   }
 }
@@ -397,36 +397,38 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
 
   printer->Indent();
   printer->Print(*vars, "VLOG(2, @\"$ServiceName$::$MethodName$: %d\", sent);\n");
-  printer->Print(*vars, "if (!sent && errorCallback != nil) {\n");
+  printer->Print(*vars, "if (!sent && callbackError != nil) {\n");
   printer->Indent();
   printer->Print(*vars, "ErrorResponse* error = [[ErrorResponse alloc] init];\n");
   printer->Print(*vars, "error.errorCode = @\"RequestNotAcknowledged\";\n");
   printer->Print(*vars, "error.errorMessage = @\"The request was not acknowledged. Please check the connection between this machine and the DotDashPay module.\";\n");
-  printer->Print(*vars, "errorCallback(error);\n");
+  printer->Print(*vars, "callbackError(error);\n");
   printer->Outdent();
   printer->Print(*vars, "} else {\n");
 
   printer->Indent();
 
-  printer->Print(*vars, "if (errorCallback != nil) {\n");
+  printer->Print(*vars, "if (callbackError != nil) {\n");
   printer->Indent();
-  printer->Print(*vars, "[SignalManager on:@\"ErrorResponse\" performCallback:errorCallback];\n");
+  printer->Print(*vars, "[SignalManager on:@\"ErrorResponse\" performCallback:callbackError];\n");
   printer->Outdent();
   printer->Print(*vars, "}\n");
 
   if (update_responses.size() > 0) {
     for (int i = 0; i < update_responses.size(); ++i) {
-      printer->Print(*vars, "if ($UpdateResponseClass$callback != nil) {\n");
+      (*vars)["UpdateResponseName"] = update_responses[i];
+      (*vars)["UpdateResponseClass"] = ddprpc_objc_generator::GetClassPrefix() + (update_responses[i]);
+
+      printer->Print(*vars, "if (callback$UpdateResponseName$ != nil) {\n");
       printer->Indent();
-      (*vars)["UpdateResponse"] = update_responses[i];
       printer->Print(
-          *vars, "[SignalManager on:@\"$UpdateResponse$\" performCallback:$UpdateResponseClass$callback];\n");
+          *vars, "[SignalManager on:@\"$UpdateResponseName$\" performCallback:callback$UpdateResponseName$];\n");
       printer->Outdent();
       printer->Print(*vars, "}\n");
     }
   }
 
-  printer->Print(*vars, "[SignalManager on:@\"$CompletionResponse$\" performCallback:completionCallback];\n");
+  printer->Print(*vars, "[SignalManager on:@\"$CompletionResponse$\" performCallback:callback$CompletionResponse$];\n");
   printer->Outdent();
 
   printer->Print(*vars, "}\n");
