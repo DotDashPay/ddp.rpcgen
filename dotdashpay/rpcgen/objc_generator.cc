@@ -335,7 +335,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
   (*vars)["CompletionResponse"] = GetCompletionResponse(method);
   const vector<string> update_responses = GetUpdateResponses(method);
 
-  printer->Print(*vars, "[DDPSignalManager clear:@\"ErrorResponse\"];\n");
+  printer->Print(*vars, "[DDPSignalManager clear:@\"$MethodName$Error\"];\n");
   for (int i = 0; i < update_responses.size(); ++i) {
     (*vars)["UpdateResponse"] = update_responses[i];
     printer->Print(*vars, "[DDPSignalManager clear:@\"$UpdateResponse$\"];\n");
@@ -359,7 +359,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
 
   printer->Print(*vars, "if (callbackError != nil) {\n");
   printer->Indent();
-  printer->Print(*vars, "[DDPSignalManager on:@\"ErrorResponse\" performCallback:callbackError];\n");
+  printer->Print(*vars, "[DDPSignalManager on:@\"$MethodName$Error\" performCallback:callbackError];\n");
   printer->Outdent();
   printer->Print(*vars, "}\n");
 
