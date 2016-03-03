@@ -110,10 +110,6 @@ google::protobuf::compiler::objectivec::ObjectiveCType type =
 return NULL;
 }
 
-string GetClassPrefix() {
-  return "";
-}
-
 }  // namespace
 
 string GetPrologue(const google::protobuf::FileDescriptor *file,
@@ -153,8 +149,9 @@ void PrintSimulatorMethods(google::protobuf::io::Printer *printer,
   const set<string> responses = GetUniqueResponses(file);
 
   for (set<string>::iterator it = responses.begin(); it != responses.end(); ++it) {
-    (*vars)["ResponseName"] = *it;
-    printer->Print(*vars, "+ (void) setResponse$ResponseName$:($ResponseName$*)response");
+    (*vars)["SimpleResponseName"] = *it;
+    (*vars)["ResponseName"] = ddprpc_objc_generator::GetClassPrefix() + *it;
+    printer->Print(*vars, "+ (void) setResponse$SimpleResponseName$:($ResponseName$*)response");
     if (is_header) {
       printer->Print(*vars, ";\n\n");
     } else {
@@ -180,7 +177,7 @@ string GetSimulatorHeader(const google::protobuf::FileDescriptor* file,
 
     const set<string> responses = GetUniqueResponses(file);
     for (set<string>::iterator it = responses.begin(); it != responses.end(); ++it) {
-      vars["ResponseName"] = *it;
+      vars["ResponseName"] = ddprpc_objc_generator::GetClassPrefix() + *it;
       printer.Print(vars, "@class $ResponseName$;\n");
     }
     printer.Print(vars, "\n");
@@ -236,10 +233,10 @@ std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, con
 
         vector<string> responses = GetUpdateResponses(method);
         for (int k = 0; k < responses.size(); ++k) {
-          vars["UpdateResponseName"] = responses[k];
+          vars["UpdateResponseName"] = ddprpc_objc_generator::GetClassPrefix() + responses[k];
           printer.Print(vars, "@\"$UpdateResponseName$\", ");
         }
-        vars["CompletionResponseName"] = GetCompletionResponse(method);
+        vars["CompletionResponseName"] = ddprpc_objc_generator::GetClassPrefix() + GetCompletionResponse(method);
         printer.Print(vars, "@\"$CompletionResponseName$\"");
 
         printer.Print(vars, "];\n");
@@ -275,12 +272,12 @@ string GetHeaderIncludes(const google::protobuf::ServiceDescriptor* service,
     // Forward decl all of the Args and responses classes.
     set<string> classes = GetUniqueResponses(service);
     for (int i = 0; i < service->method_count(); ++i) {
-      classes.insert(ddprpc_objc_generator::GetClassPrefix() + service->method(i)->name() + "Args");
+      classes.insert(service->method(i)->name() + "Args");
     }
 
-    printer.Print(vars, "@class ErrorResponse;\n");
+    printer.Print(vars, "@class DDPErrorResponse;\n");
     for (set<string>::iterator it = classes.begin(); it != classes.end(); ++it) {
-      vars["ClassName"] = *it;
+      vars["ClassName"] = ddprpc_objc_generator::GetClassPrefix() + *it;
       printer.Print(vars, "@class $ClassName$;\n");
     }
     printer.Print(vars, "\n");
@@ -325,7 +322,7 @@ void PrintHeaderClientMethodInterfaces(
   printer->Print(
       *vars,
       "- (void) $Method$:($MethodArgs$*)args "
-      "onError:(void(^)(ErrorResponse*))callbackError on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
+      "onError:(void(^)(DDPErrorResponse*))callbackError on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
   PrintMethodSuffix(printer, is_declaration);
 
   if (update_responses.size() > 0) {
@@ -341,12 +338,12 @@ void PrintHeaderClientMethodInterfaces(
       printer->Print(*vars, "}\n\n");
     }
 
-    printer->Print(*vars, "- (void) $Method$:($MethodArgs$*)args onError:(void(^)(ErrorResponse*))callbackError");
+    printer->Print(*vars, "- (void) $Method$:($MethodArgs$*)args onError:(void(^)(DDPErrorResponse*))callbackError");
     for (int i = 0; i < update_responses.size(); ++i) {
       (*vars)["UpdateResponseName"] = update_responses[i];
       (*vars)["UpdateResponseClass"] = ddprpc_objc_generator::GetClassPrefix() + (update_responses[i]);
       printer->Print(
-          *vars, " on$UpdateResponseName$:(void(^)($UpdateResponseClass$*))callback$UpdateResponseClass$");
+          *vars, " on$UpdateResponseName$:(void(^)($UpdateResponseClass$*))callback$UpdateResponseName$");
     }
     printer->Print(
         *vars," on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
@@ -399,7 +396,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
   printer->Print(*vars, "VLOG(2, @\"$ServiceName$::$MethodName$: %d\", sent);\n");
   printer->Print(*vars, "if (!sent && callbackError != nil) {\n");
   printer->Indent();
-  printer->Print(*vars, "ErrorResponse* error = [[ErrorResponse alloc] init];\n");
+  printer->Print(*vars, "DDPErrorResponse* error = [[DDPErrorResponse alloc] init];\n");
   printer->Print(*vars, "error.errorCode = @\"RequestNotAcknowledged\";\n");
   printer->Print(*vars, "error.errorMessage = @\"The request was not acknowledged. Please check the connection between this machine and the DotDashPay module.\";\n");
   printer->Print(*vars, "callbackError(error);\n");
@@ -525,7 +522,7 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
         const google::protobuf::Descriptor* args = method->input_type();
         vars["MethodName"] = method->name();
         vars["MethodNameLowercase"] = LowercaseFirstLetter(method->name());
-        vars["MethodArgsName"] = method->name() + "Args";
+        vars["MethodArgsName"] = ddprpc_objc_generator::GetClassPrefix() + method->name() + "Args";
 
         printer.Print(vars, "- (void) Example$MethodName$ {\n");
         printer.Print(vars, "// @example-args($PackageName$.$MethodName$)\n");
@@ -539,7 +536,7 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
 
         printer.Print(vars, "[DotDashPayAPI.$PackageNameLowercase$ $MethodNameLowercase$:args\n");
         printer.Print(vars, "// @example-error($PackageName$.$MethodName$)\n");
-        printer.Print(vars, "onError:^(ErrorResponse* error) {\n");
+        printer.Print(vars, "onError:^(DDPErrorResponse* error) {\n");
         printer.Print(vars, "if ([error.errorCode isEqualToString:@\"\"]) {\n");
         printer.Print(vars, "LOG(ERROR, @\"%@\", error.errorMessage);\n");
         printer.Print(vars, "}\n");
@@ -551,8 +548,9 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
 
         for (int k = 0; k < responses.size(); ++k) {
           vars["ResponseName"] = responses[k];
+          vars["ResponseNameClass"] = ddprpc_objc_generator::GetClassPrefix() + responses[k];
           printer.Print(vars, "// @example-response($PackageName$.$ResponseName$)\n");
-          printer.Print(vars, "on$ResponseName$:^($ResponseName$* response) {\n");
+          printer.Print(vars, "on$ResponseName$:^($ResponseNameClass$* response) {\n");
 
           const google::protobuf::Descriptor* response = FindMessageByName(file, responses[k]);
           if (response != NULL) {
@@ -573,18 +571,19 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
 
         printer.Print(vars, "// @example-request($PackageName$.$MethodName$)\n");
         printer.Print(vars, "[DotDashPayAPI.$PackageNameLowercase$ $MethodNameLowercase$:args ");
-        printer.Print(vars, "onError:^(ErrorResponse* error) {\n");
+        printer.Print(vars, "onError:^(DDPErrorResponse* error) {\n");
         printer.Print(vars, "// Handle error response\n");
         printer.Print(vars, "}");
         for (int k = 0; k < responses.size(); ++k) {
           vars["ResponseName"] = responses[k];
-          printer.Print(vars, " on$ResponseName$:^($ResponseName$* response) {\n");
+          vars["ResponseNameClass"] = ddprpc_objc_generator::GetClassPrefix() + responses[k];
+          printer.Print(vars, " on$ResponseName$:^($ResponseNameClass$* response) {\n");
           printer.Print(vars, "// Handle response\n");
           printer.Print(vars, "}");
         }
         printer.Print("];\n");
         printer.Print(vars, "// @example-request-end()\n\n");
-        printer.Print(vars, "}\n");
+        printer.Print(vars, "}\n\n");
       }
     }
   }

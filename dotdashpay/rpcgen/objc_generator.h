@@ -74,6 +74,11 @@ std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, con
 // Return the examples template.
 std::string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const Parameters &params);
 
+inline std::string GetClassPrefix() {
+  return "DDP";
+}
+
+
 }  // namespace ddprpc_objc_generator
 
 #endif  // __DOTDASHPAY_RPCGEN_OBJC_GENERATOR_H__
