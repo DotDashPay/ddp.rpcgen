@@ -142,28 +142,6 @@ string GetPrologue(const google::protobuf::FileDescriptor *file,
   return output;
 }
 
-void PrintSimulatorMethods(google::protobuf::io::Printer *printer,
-                           const google::protobuf::FileDescriptor* file,
-                           map<string, string> *vars,
-                           const bool& is_header) {
-  const set<string> responses = GetUniqueResponses(file);
-
-  for (set<string>::iterator it = responses.begin(); it != responses.end(); ++it) {
-    (*vars)["SimpleResponseName"] = *it;
-    (*vars)["ResponseName"] = ddprpc_objc_generator::GetClassPrefix() + *it;
-    printer->Print(*vars, "+ (void) setResponse$SimpleResponseName$:($ResponseName$*)response");
-    if (is_header) {
-      printer->Print(*vars, ";\n\n");
-    } else {
-      printer->Print("{\n");
-      printer->Indent();
-      printer->Print(*vars, "[SimulatorHelper setResponse:@\"$ResponseName$\" withResponseData:response];\n");
-      printer->Outdent();
-      printer->Print(*vars, "}\n\n");
-    }
-  }
-}
-
 string GetSimulatorHeader(const google::protobuf::FileDescriptor* file,
                           const Parameters &params) {
   string output;
@@ -174,20 +152,8 @@ string GetSimulatorHeader(const google::protobuf::FileDescriptor* file,
     map<string, string> vars;
 
     printer.Print(vars, "#import <Foundation/Foundation.h>\n\n");
-
-    const set<string> responses = GetUniqueResponses(file);
-    for (set<string>::iterator it = responses.begin(); it != responses.end(); ++it) {
-      vars["ResponseName"] = ddprpc_objc_generator::GetClassPrefix() + *it;
-      printer.Print(vars, "@class $ResponseName$;\n");
-    }
-    printer.Print(vars, "\n");
-
-    printer.Print(vars, "@interface DDPSimulatorManager : NSObject\n\n");
-
-    printer.Print(vars, "+ (void) setResponse:(NSString*)responseName withResponseData:(id)responseData;\n\n");
-    printer.Print(vars, "+ (void) loadSimulatorSpecification:(NSString*)name;\n\n");
+    printer.Print(vars, "@interface DDPSimulatorMappings : NSObject\n\n");
     printer.Print(vars, "+ (NSArray*) getResponsesForRequest:(NSString*)request;\n\n");
-    PrintSimulatorMethods(&printer, file, &vars, true);
     printer.Print(vars, "@end\n");
   }
 
@@ -202,22 +168,9 @@ std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, con
     google::protobuf::io::Printer printer(&output_stream, '$');
     map<string, string> vars;
 
-    printer.Print(vars, "#import \"DDPSimulatorManager.h\"\n\n");
-    printer.Print(vars, "#import \"SimulatorHelper.h\"\n\n");
+    printer.Print(vars, "#import \"DDPSimulatorMappings.h\"\n\n");
 
-    printer.Print(vars, "@implementation DDPSimulatorManager\n\n");
-
-    printer.Print(vars, "+ (void) loadSimulatorSpecification:(NSString*)name {\n");
-    printer.Indent();
-    printer.Print(vars, "[SimulatorHelper loadSimulatorSpecification:name];\n");
-    printer.Outdent();
-    printer.Print(vars, "}\n\n");
-
-    printer.Print(vars, "+ (void) setResponse:(NSString*)responseName withResponseData:(id)responseData {\n");
-    printer.Indent();
-    printer.Print(vars, "[SimulatorHelper setResponse:responseName withResponseData:responseData];\n");
-    printer.Outdent();
-    printer.Print(vars, "}\n\n");
+    printer.Print(vars, "@implementation DDPSimulatorMappings\n\n");
 
     printer.Print(vars, "+ (NSArray*) getResponsesForRequest:(NSString*)request {\n");
     printer.Indent();
@@ -233,10 +186,10 @@ std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, con
 
         vector<string> responses = GetUpdateResponses(method);
         for (int k = 0; k < responses.size(); ++k) {
-          vars["UpdateResponseName"] = ddprpc_objc_generator::GetClassPrefix() + responses[k];
+          vars["UpdateResponseName"] = responses[k];
           printer.Print(vars, "@\"$UpdateResponseName$\", ");
         }
-        vars["CompletionResponseName"] = ddprpc_objc_generator::GetClassPrefix() + GetCompletionResponse(method);
+        vars["CompletionResponseName"] = GetCompletionResponse(method);
         printer.Print(vars, "@\"$CompletionResponseName$\"");
 
         printer.Print(vars, "];\n");
@@ -249,7 +202,6 @@ std::string GetSimulatorSource(const google::protobuf::FileDescriptor* file, con
     printer.Outdent();
     printer.Print(vars, "}\n\n");
 
-    PrintSimulatorMethods(&printer, file, &vars, false);
     printer.Print(vars, "@end\n");
   }
 
@@ -383,14 +335,14 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
   (*vars)["CompletionResponse"] = GetCompletionResponse(method);
   const vector<string> update_responses = GetUpdateResponses(method);
 
-  printer->Print(*vars, "[SignalManager clear:@\"ErrorResponse\"];\n");
+  printer->Print(*vars, "[DDPSignalManager clear:@\"ErrorResponse\"];\n");
   for (int i = 0; i < update_responses.size(); ++i) {
     (*vars)["UpdateResponse"] = update_responses[i];
-    printer->Print(*vars, "[SignalManager clear:@\"$UpdateResponse$\"];\n");
+    printer->Print(*vars, "[DDPSignalManager clear:@\"$UpdateResponse$\"];\n");
   }
-  printer->Print(*vars, "[SignalManager clear:@\"$CompletionResponse$\"];\n");
+  printer->Print(*vars, "[DDPSignalManager clear:@\"$CompletionResponse$\"];\n");
   printer->Print(
-      *vars, "[[Bridge getInstance] sendRequest:@\"$MethodName$\" withArgs:args completionBlock:^(BOOL sent) {\n");
+      *vars, "[[DDPBridge getInstance] sendRequest:@\"$MethodName$\" withArgs:args completionBlock:^(BOOL sent) {\n");
 
   printer->Indent();
   printer->Print(*vars, "VLOG(2, @\"$ServiceName$::$MethodName$: %d\", sent);\n");
@@ -407,7 +359,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
 
   printer->Print(*vars, "if (callbackError != nil) {\n");
   printer->Indent();
-  printer->Print(*vars, "[SignalManager on:@\"ErrorResponse\" performCallback:callbackError];\n");
+  printer->Print(*vars, "[DDPSignalManager on:@\"ErrorResponse\" performCallback:callbackError];\n");
   printer->Outdent();
   printer->Print(*vars, "}\n");
 
@@ -419,13 +371,13 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
       printer->Print(*vars, "if (callback$UpdateResponseName$ != nil) {\n");
       printer->Indent();
       printer->Print(
-          *vars, "[SignalManager on:@\"$UpdateResponseName$\" performCallback:callback$UpdateResponseName$];\n");
+          *vars, "[DDPSignalManager on:@\"$UpdateResponseName$\" performCallback:callback$UpdateResponseName$];\n");
       printer->Outdent();
       printer->Print(*vars, "}\n");
     }
   }
 
-  printer->Print(*vars, "[SignalManager on:@\"$CompletionResponse$\" performCallback:callback$CompletionResponse$];\n");
+  printer->Print(*vars, "[DDPSignalManager on:@\"$CompletionResponse$\" performCallback:callback$CompletionResponse$];\n");
   printer->Outdent();
 
   printer->Print(*vars, "}\n");
@@ -483,11 +435,11 @@ string GetSourceIncludes(const google::protobuf::ServiceDescriptor* service, con
     vars["HeaderFilename"] = "DDP" + service->name() + ".h";
     printer.Print(vars, "#import \"$HeaderFilename$\"\n");
     printer.Print(vars, "\n");
-    printer.Print(vars, "#import \"Bridge.h\"\n");
+    printer.Print(vars, "#import \"DDPBridge.h\"\n");
     printer.Print(vars, "#import \"DotDashPayAPI.h\"\n");
-    printer.Print(vars, "#import \"Logging.h\"\n");
-    printer.Print(vars, "#import \"SerialProtocol.h\"\n");
-    printer.Print(vars, "#import \"SignalManager.h\"\n\n");
+    printer.Print(vars, "#import \"DDPLogging.h\"\n");
+    printer.Print(vars, "#import \"DDPSerialProtocol.h\"\n");
+    printer.Print(vars, "#import \"DDPSignalManager.h\"\n\n");
 
     printer.Print(vars, "#import \"ApiCommon.pbobjc.h\"\n");
     const set<string> classes = GetUniqueResponses(service, true);

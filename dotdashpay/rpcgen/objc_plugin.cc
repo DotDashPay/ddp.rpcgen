@@ -126,7 +126,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
 
     // Build the simulator.
     {
-      string file_name = "DDPSimulatorManager";
+      string file_name = "DDPSimulatorMappings";
 
       string header_code =
           ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
