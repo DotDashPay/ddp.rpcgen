@@ -262,18 +262,6 @@ void PrintHeaderClientMethodInterfaces(
   printer->Print(
       *vars,
       "- (void) $Method$:($MethodArgs$*)args "
-      "on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
-  PrintMethodSuffix(printer, is_declaration);
-  if (!is_declaration) {
-    printer->Indent();
-    printer->Print(*vars, "[self $Method$:args onError:nil on$CompletionResponseName$:callback$CompletionResponseName$];\n");
-    printer->Outdent();
-    printer->Print(*vars, "}\n\n");
-  }
-
-  printer->Print(
-      *vars,
-      "- (void) $Method$:($MethodArgs$*)args "
       "onError:(void(^)(DDPErrorResponse*))callbackError on$CompletionResponseName$:(void(^)($CompletionResponseClass$*))callback$CompletionResponseName$");
   PrintMethodSuffix(printer, is_declaration);
 
