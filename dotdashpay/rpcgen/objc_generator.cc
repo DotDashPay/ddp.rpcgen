@@ -469,8 +469,9 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
         printer.Print(vars, "$MethodArgsName$* args = [[$MethodArgsName$ alloc] init];\n");
         for (int k = 0; k < args->field_count(); ++k) {
           const google::protobuf::FieldDescriptor* field = args->field(k);
+          vars["OriginalFieldName"] = field->name();
           vars["FieldName"] = LowercaseFirstLetter(LowerUnderscoreToUpperCamel(field->name()));
-          printer.Print(vars, "args.$FieldName$ = nil;\n");
+          printer.Print(vars, "args.$FieldName$ = @example-value($OriginalFieldName$);\n");
         }
         printer.Print(vars, "// @example-args-end()\n\n");
 
@@ -496,9 +497,11 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
           if (response != NULL) {
             for (int l = 0; l < response->field_count(); ++l) {  // Damnnnn. 'l' is deep.
               const google::protobuf::FieldDescriptor* field = response->field(l);
+              vars["OriginalFieldName"] = field->name();
               vars["FieldName"] = LowercaseFirstLetter(LowerUnderscoreToUpperCamel(field->name()));
               vars["FieldType"] = PrimitiveTypeName(field);
-              printer.Print(vars, "$FieldType$* $FieldName$ = response.$FieldName$;  // $FieldName$ = FILL_IN\n");
+              printer.Print(vars, "$FieldType$* $FieldName$ = response.$FieldName$;  ");
+              printer.Print(vars, "// $FieldName$ = @example-value($OriginalFieldName$)\n");
             }
           } else {
             fprintf(stderr, "Could not find response defined in current context: %s\n", responses[k].c_str());
