@@ -1,6 +1,6 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-set(PLUGINS "cpp" "objc")
+set(PLUGINS "cpp" "objc" "nodejs")
 
 foreach(PLUGIN ${PLUGINS})
   add_executable(
