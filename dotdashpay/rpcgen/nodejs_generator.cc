@@ -81,7 +81,12 @@ const char* GetLodashChecker(const google::protobuf::FieldDescriptor* descriptor
 }
 
 string GetFieldCheckingStatements(const string& field_name, const google::protobuf::FieldDescriptor* descriptor) {
-  if (!descriptor->is_required()) {
+  if (!descriptor->is_required() || (descriptor->is_required() && descriptor->has_default_value())) {
+    if (descriptor->is_required()) {
+      fprintf(stderr,
+              "FYI: The field [%s] is required, but has a default set so it will be allowed to be undefined.\n",
+              field_name.c_str());
+    }
     return "false";
   }
 
