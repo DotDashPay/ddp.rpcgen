@@ -181,7 +181,7 @@ function(PROTOBUF_GENERATE_GO SRCS)
       ARGS --go_out ${CMAKE_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
       DEPENDS ${ABS_FIL}
       COMMENT "Running Go protocol buffer compiler on ${FIL}"
-      VERBATIM )  
+      VERBATIM )
   endforeach()
 
   # This is a pretty gnarly hack to auto-generate the Go protobufs
@@ -252,8 +252,11 @@ function(PROTOBUF_GENERATE_CPP SRCS HDRS)
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
 
-    string(REPLACE ${PROTOBUF_IMPORT_DIRS} ${CMAKE_BINARY_DIR} PROTO_PATH ${ABS_FIL})
-    get_filename_component(PROTOSRC_OUTPUT_DIR ${PROTO_PATH} DIRECTORY)
+    set(PROTOSRC_OUTPUT_DIR ${CMAKE_BINARY_DIR})
+    if(DEFINED ROOT_FIRMWARE_DIR)
+      string(REPLACE ${ROOT_FIRMWARE_DIR} ${CMAKE_BINARY_DIR} PROTO_PATH ${ABS_FIL})
+      get_filename_component(PROTOSRC_OUTPUT_DIR ${PROTO_PATH} DIRECTORY)
+    endif()
 
     list(APPEND ${SRCS} "${PROTOSRC_OUTPUT_DIR}/${FIL_WE}.pb.cc")
     list(APPEND ${HDRS} "${PROTOSRC_OUTPUT_DIR}/${FIL_WE}.pb.h")
@@ -264,7 +267,7 @@ function(PROTOBUF_GENERATE_CPP SRCS HDRS)
       COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
       ARGS --cpp_out ${CMAKE_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
       DEPENDS ${ABS_FIL}
-      COMMENT "Running C++ protocol buffer compiler on ${FIL}"
+      COMMENT "Running C++ protocol buffer compiler on ${FIL} [--cpp_out ${CMAKE_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}]"
       VERBATIM )
   endforeach()
 

@@ -44,7 +44,7 @@ include_directories("${CMAKE_BINARY_DIR}")
 
 ## This MUST go first to ensure the protos get converted into *.cc and
 ## *.h files before the rest of the modules are built.
-set(PROTOBUF_IMPORT_DIRS "${CMAKE_CURRENT_SOURCE_DIR}")
+set(PROTOBUF_IMPORT_DIRS "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/dotdashpay/api/common/protobuf")
 file(GLOB PROTOBUF_FILES "${CMAKE_CURRENT_SOURCE_DIR}/dotdashpay/api/common/protobuf/*.proto")
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTOBUF_FILES})
 list(APPEND ALL_PROTOBUF_FILES ${PROTO_SRCS} ${PROTO_HDRS})
