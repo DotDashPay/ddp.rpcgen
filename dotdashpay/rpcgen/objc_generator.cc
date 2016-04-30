@@ -317,10 +317,11 @@ string GetHeaderService(const google::protobuf::ServiceDescriptor* service,
 void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
                                       const google::protobuf::MethodDescriptor *method,
                                       map<string, string> *vars) {
-  (*vars)["ServiceName"] = "DDP" + method->service()->name();
+  (*vars)["ServiceName"] = ddprpc_objc_generator::GetClassPrefix() + method->service()->name();
   (*vars)["Method"] = LowercaseFirstLetter(method->name());
   (*vars)["MethodName"] = method->name();
   (*vars)["CompletionResponse"] = GetCompletionResponse(method);
+  (*vars)["MessageId"] = ddprpc_objc_generator::GetClassPrefix() + "MessageId_" + method->name() + "Args";
   const vector<string> update_responses = GetUpdateResponses(method);
 
   printer->Print(*vars, "[DDPSignalManager clear:@\"$MethodName$Error\"];\n");
@@ -330,7 +331,7 @@ void PrintServiceMethodImplementation(google::protobuf::io::Printer *printer,
   }
   printer->Print(*vars, "[DDPSignalManager clear:@\"$CompletionResponse$\"];\n");
   printer->Print(
-      *vars, "[[DDPBridge getInstance] sendRequest:@\"$MethodName$\" withArgs:args completionBlock:^(BOOL sent) {\n");
+      *vars, "[[DDPBridge getInstance] sendRequest:@\"$MethodName$\" messageId:$MessageId$ withArgs:args completionBlock:^(BOOL sent) {\n");
 
   printer->Indent();
   printer->Print(*vars, "VLOG(2, @\"$ServiceName$::$MethodName$: %d\", sent);\n");
@@ -429,7 +430,7 @@ string GetSourceIncludes(const google::protobuf::ServiceDescriptor* service, con
     printer.Print(vars, "#import \"DDPSerialProtocol.h\"\n");
     printer.Print(vars, "#import \"DDPSignalManager.h\"\n\n");
 
-    printer.Print(vars, "#import \"ApiCommon.pbobjc.h\"\n");
+    printer.Print(vars, "#import \"Common.pbobjc.h\"\n");
     const set<string> classes = GetUniqueResponses(service, true);
     for (set<string>::iterator it = classes.begin(); it != classes.end(); ++it) {
       vars["ClassName"] = *it;
@@ -465,6 +466,8 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
         vars["MethodArgsName"] = ddprpc_objc_generator::GetClassPrefix() + method->name() + "Args";
 
         printer.Print(vars, "- (void) Example$MethodName$ {\n");
+        printer.Indent();
+
         printer.Print(vars, "// @example-args($PackageName$.$MethodName$)\n");
         printer.Print(vars, "$MethodArgsName$* args = [[$MethodArgsName$ alloc] init];\n");
         for (int k = 0; k < args->field_count(); ++k) {
@@ -478,10 +481,18 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
         printer.Print(vars, "[DotDashPayAPI.$PackageNameLowercase$ $MethodNameLowercase$:args\n");
         printer.Print(vars, "// @example-error($PackageName$.$MethodName$)\n");
         printer.Print(vars, "onError:^(DDPErrorResponse* error) {\n");
+        printer.Indent();
+
         printer.Print(vars, "if ([error.errorCode isEqualToString:@\"\"]) {\n");
+        printer.Indent();
+
         printer.Print(vars, "LOG(ERROR, @\"%@\", error.errorMessage);\n");
+        printer.Outdent();
         printer.Print(vars, "}\n");
+
+        printer.Outdent();
         printer.Print(vars, "}\n");
+
         printer.Print(vars, "// @example-error-end()\n");
 
         vector<string> responses = GetUpdateResponses(method);
@@ -492,14 +503,22 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
           vars["ResponseNameClass"] = ddprpc_objc_generator::GetClassPrefix() + responses[k];
           printer.Print(vars, "// @example-response($PackageName$.$ResponseName$)\n");
           printer.Print(vars, "on$ResponseName$:^($ResponseNameClass$* response) {\n");
+          printer.Indent();
 
           const google::protobuf::Descriptor* response = FindMessageByName(file, responses[k]);
           if (response != NULL) {
             for (int l = 0; l < response->field_count(); ++l) {  // Damnnnn. 'l' is deep.
               const google::protobuf::FieldDescriptor* field = response->field(l);
+              // Don't output META examples.
+              if (field->name() == "META") {
+                continue;
+              }
+
               vars["OriginalFieldName"] = field->name();
               vars["FieldName"] = LowercaseFirstLetter(LowerUnderscoreToUpperCamel(field->name()));
-              vars["FieldType"] = PrimitiveTypeName(field);
+              const char* type_name = PrimitiveTypeName(field);
+              vars["FieldType"] = type_name ? type_name : "id";
+
               printer.Print(vars, "$FieldType$* $FieldName$ = response.$FieldName$;  ");
               printer.Print(vars, "// $FieldName$ = @example-value($OriginalFieldName$)\n");
             }
@@ -507,6 +526,7 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
             fprintf(stderr, "Could not find response defined in current context: %s\n", responses[k].c_str());
           }
 
+          printer.Outdent();
           printer.Print(vars, "}\n");
           printer.Print(vars, "// @example-response-end()\n");
         }
@@ -515,18 +535,27 @@ string GetExamplesTemplate(const google::protobuf::FileDescriptor* file, const P
         printer.Print(vars, "// @example-request($PackageName$.$MethodName$)\n");
         printer.Print(vars, "[DotDashPayAPI.$PackageNameLowercase$ $MethodNameLowercase$:args ");
         printer.Print(vars, "onError:^(DDPErrorResponse* error) {\n");
+        printer.Indent();
+
         printer.Print(vars, "// Handle error response\n");
+        printer.Outdent();
         printer.Print(vars, "}");
+
         for (int k = 0; k < responses.size(); ++k) {
           vars["ResponseName"] = responses[k];
           vars["ResponseNameClass"] = ddprpc_objc_generator::GetClassPrefix() + responses[k];
           printer.Print(vars, " on$ResponseName$:^($ResponseNameClass$* response) {\n");
+          printer.Indent();
+
           printer.Print(vars, "// Handle response\n");
+          printer.Outdent();
           printer.Print(vars, "}");
         }
         printer.Print("];\n");
         printer.Print(vars, "// @example-request-end()\n\n");
+        printer.Outdent();
         printer.Print(vars, "}\n\n");
+
       }
     }
   }

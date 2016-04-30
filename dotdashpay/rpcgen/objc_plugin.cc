@@ -101,6 +101,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
     for (int i = 0; i < file->service_count(); ++i) {
       const google::protobuf::ServiceDescriptor* service = file->service(i);
       string file_name = "DDP" + ddprpc_generator::CapitalizeFirstLetter(service->name());
+      fprintf(stderr, "Generating objc file: %s\n", file_name.c_str());
 
       string header_code =
           ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
@@ -127,6 +128,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
     // Build the simulator.
     {
       string file_name = "DDPSimulatorMappings";
+      fprintf(stderr, "Generating objc file: %s\n", file_name.c_str());
 
       string header_code =
           ddprpc_objc_generator::GetPrologue(file, generator_parameters, true) +
@@ -146,6 +148,7 @@ class ObjcGenerator : public google::protobuf::compiler::CodeGenerator {
     // Build the examples template.
     {
       string file_name = "APIExamples.template.m";
+      fprintf(stderr, "Generating objc file: %s\n", file_name.c_str());
 
       string source_code = ddprpc_objc_generator::GetExamplesTemplate(file, generator_parameters);
       std::unique_ptr<google::protobuf::io::ZeroCopyOutputStream> source_output(context->Open(file_name));
