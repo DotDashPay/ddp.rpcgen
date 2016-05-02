@@ -18,7 +18,9 @@ dotdashpay.init({simulate: true});
 // @example-args({{service.name}}.{{method.name}})
 var args = {
 {% for field in (method.name | find_arguments_proto_by_method_name).field %}
+  {% if field.name != "META" %}
     {{field.name}}: {{field.name | get_example_value_for_field}},
+  {% endif %}
 {% endfor %}
 };
 // @example-args-end()
@@ -27,19 +29,27 @@ var args = {
 
 describe("{{service.name}}", function() {
   describe("{{method.name|lowercase_first_letter}}", function () {
-    it("should have no undefined fields", function () {
-
+    it("should have no undefined fields", function (done) {
+    this.timeout(10000);
+    var callbacksVisited = 0;
 // @reference-ignore-end()
 // @example-request({{service.name}}.{{method.name}})
 dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
 {% for resp in method | get_method_options %}
     .on{{resp.name}}(function (response) {
 {% for field in (resp.name | find_proto_by_name).field %}
+  {% if field.name != "META" %}
         var {{field.name}} = response.{{field.name}}; // {{field.name}} = {{field.name | get_example_value_for_field}}
 // @reference-ignore()
-        assert.false(_.isUndefined({{field.name}}));
+        assert.isDefined({{field.name}});
 // @reference-ignore-end()
+  {% endif %}
 {% endfor%}
+        callbacksVisited++;
+{% if resp.type == "COMPLETION" %}
+        assert.equal(callbacksVisited, {{method | get_method_options | length}}, "Not all callbacks were called")
+        setTimeout(done, 500); // let the logging complete
+{% endif %}
     })
 {% endfor %}
     .onError(function (errorData) {
@@ -47,7 +57,7 @@ dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first
             console.log("Error: " + errorData.errorMessage);
         }
 // @reference-ignore()
-        fail(null, null, "This example should not ever return an error");
+        fail(null, null, "This example should never return an error");
 // @reference-ignore-end()
     });
 // @example-request-end()
