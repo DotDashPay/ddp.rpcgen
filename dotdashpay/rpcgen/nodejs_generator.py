@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from ddp_generator import DDPGenerator
-import generator
 
 class NodeJsGenerator(DDPGenerator):
     def language(self):
