@@ -34,7 +34,7 @@ dotdashpay.payment.receivePaymentDataThenSettle({cents: 128})
 var args = {
 {% for field in (method.name | find_arguments_proto_by_method_name).field %}
   {% if field.name != "META" %}
-    {{field.name}}: {{field.name | get_example_value_for_field}},
+    {{field.name | recase}}: {{field.name | get_example_value_for_field}},
   {% endif %}
 {% endfor %}
 };
@@ -54,9 +54,9 @@ dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first
             .on{{resp.name}}(function (response) {
                 {% for field in (resp.name | find_proto_by_name).field %}
                 {% if field.name != "META" %}
-                var {{field.name}} = response.{{field.name}}; // {{field.name}} = {{field.name | get_example_value_for_field}}
+                var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
                 // @test()
-                assert.isDefined({{field.name}});
+                assert.isDefined({{field.name | recase}});
                 // @test-end()
                 {% endif %}
                 {% endfor%}
