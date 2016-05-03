@@ -264,7 +264,7 @@ class DDPGenerator:
         directory specified to protoc.
 
         """
-        setting = "{}_{}_DIR".format(self.language.upper(), typename.upper())
+        setting = "{}_{}_DIR".format(self.language().upper(), typename.upper())
         if setting in os.environ:
             return os.environ[setting]
         else:
