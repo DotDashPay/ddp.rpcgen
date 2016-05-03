@@ -99,7 +99,13 @@ class DDPGenerator:
     {type}_{header|source}_name(s?), you must create a file
     ./templates/{language}.{type}.{header|source}.j2, which is a jinja
     template. For languages that don't use header files, the
-    associated template does not need to be created.
+    associated template does not need to be created. The {type} is
+    related to the function names in this class (e.g. examples, api).
+
+    You can control the output locations of the non-api files by
+    setting environment variables like:
+
+    {LANGUAGE}_{TYPE}_DIR=/path/to/output/relative/to/protoc/out
 
     """
     __metaclass__ = ABCMeta
@@ -146,6 +152,23 @@ class DDPGenerator:
                 services.append(service)
         return services
 
+    def output_dir(self, typename):
+        """output_dir returns the output dir for the typename based on the
+        language.
+
+        This method checks for an environment variable
+        {LANGUAGE}_{TYPENAME}_DIR and otherwise just returns empty.
+
+        This output directory should be relative to the output
+        directory specified to protoc.
+
+        """
+        setting = "{}_{}_DIR".format(self.language.upper(), typename.upper())
+        if setting in os.environ:
+            return os.environ[setting]
+        else:
+            return "."
+
     def run(self):
         """run is the main method that kicks off the autogeneration.
 
@@ -189,7 +212,11 @@ class DDPGenerator:
     @abstractmethod
     def language(self):
         """language should return the language that this generator
-        implements
+        implements.
+
+        This should correspond to the name of the files in the
+        templates directory and the section in the example-values.json
+        file.
 
         """
         pass
@@ -345,7 +372,7 @@ class DDPGenerator:
             header_name = self.simulator_header_name(service)
             if header_name is not None:
                 generated_header_descriptor = outputs.file.add()
-                generated_header_descriptor.name = header_name
+                generated_header_descriptor.name = "{}/{}".format(self.output_dir("simulator"), header_name)
                 generated_header_descriptor.content = self.beautify(
                     self.render(environment, "simulator", "header", service = service))
 
@@ -353,7 +380,7 @@ class DDPGenerator:
             source_name = self.simulator_source_name(service)
             if source_name is not None:
                 generated_source_descriptor = outputs.file.add()
-                generated_source_descriptor.name = source_name
+                generated_source_descriptor.name = "{}/{}".format(self.output_dir("simulator"), source_name)
                 generated_source_descriptor.content = self.beautify(
                     self.render(environment, "simulator", "source", service = service))
 
@@ -380,7 +407,7 @@ class DDPGenerator:
                     continue
 
                 generated_source_descriptor = outputs.file.add()
-                generated_source_descriptor.name = source_name
+                generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
 
                 content = self.render(environment, "examples", "source", method = method, service = service)
                 example_content = re_markup.sub("", re_reference.sub("", re_test.sub("", content)))
@@ -408,7 +435,7 @@ class DDPGenerator:
                     continue
 
                 generated_source_descriptor = outputs.file.add()
-                generated_source_descriptor.name = source_name
+                generated_source_descriptor.name = "{}/{}".format(self.output_dir("tests"), source_name)
                 test_content = re_markup.sub("", re_example.sub("", re_reference.sub("", content)))
                 generated_source_descriptor.content = self.beautify(test_content)
 
@@ -416,7 +443,7 @@ class DDPGenerator:
         source_name = self.examples_source_name("reference")
         if source_name is not None:
             generated_source_descriptor = outputs.file.add()
-            generated_source_descriptor.name = source_name
+            generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
 
             reference_single_content = ""
             for identifier in singles_lines:
