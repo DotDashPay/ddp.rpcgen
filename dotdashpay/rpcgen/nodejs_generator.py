@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from ddp_generator import DDPGenerator
+from ddp_generator import DDPGenerator, to_camel_case
 import jsbeautifier
 
 class NodeJsGenerator(DDPGenerator):
@@ -9,6 +9,9 @@ class NodeJsGenerator(DDPGenerator):
 
     def beautify(self, code):
         return jsbeautifier.beautify(code)
+
+    def recase(self, variable):
+        return to_camel_case(variable)
 
     def api_header_name(self, service):
         return None

@@ -34,7 +34,7 @@ dotdashpay.payment.receivePaymentDataThenSettle({cents: 128})
 var args = {
   {% for field in (method.name | find_arguments_proto_by_method_name).field %}
   {% if field.name != "META" %}
-  {{field.name}}: {{field.name | get_example_value_for_field}},
+  {{field.name | recase}}: {{field.name | get_example_value_for_field}},
   {% endif %}
   {% endfor %}
 };
@@ -54,9 +54,9 @@ describe("{{service.name}}", function() {
         .on{{resp.name}}(function (response) {
           {% for field in (resp.name | find_proto_by_name).field %}
           {% if field.name != "META" %}
-          var {{field.name}} = response.{{field.name}}; // {{field.name}} = {{field.name | get_example_value_for_field}}
+          var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
           // @test()
-          assert.isDefined({{field.name}});
+          assert.isDefined({{field.name | recase}});
           // @test-end()
           {% endif %}
           {% endfor%}
@@ -86,10 +86,9 @@ describe("{{service.name}}", function() {
       var testErrorMessage = "Test error message";
       var testErrorCode = 1;
       dotdashpay.simulator.setResponse("{{(method | get_method_options | first).name}}",
-                                       {error_message: testErrorMessage,
-                                        error_code: testErrorCode},
+                                       {errorMessage: testErrorMessage,
+                                        errorCode: testErrorCode},
                                        true);
-
       dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
       {% for resp in method | get_method_options %}
         .on{{resp.name}}(function (response) {
@@ -97,9 +96,9 @@ describe("{{service.name}}", function() {
         })
       {% endfor %}
         .onError(function (errorData) {
-          assert.equal(testErrorMessage, errorData.error_message,
+          assert.equal(testErrorMessage, errorData.errorMessage,
                        "Simulator error message was not returned correctly");
-          assert.equal(testErrorCode, errorData.error_code,
+          assert.equal(testErrorCode, errorData.errorCode,
                        "Simulator error code was not returned correctly");
           done();
         });

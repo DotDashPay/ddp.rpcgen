@@ -66,6 +66,15 @@ def get_method_options(method):
         })
     return responses
 
+
+def to_camel_case(snake_str):
+    """to_camel_case is a utility method for converting strings to camel
+    case.
+
+    """
+    components = snake_str.split('_')
+    return components[0] + "".join(x.title() for x in components[1:])
+
 class DDPGenerator:
     """DDPGenerator is an abstract class that is used to generate the API
     in a target language.
@@ -194,6 +203,15 @@ class DDPGenerator:
         pass
 
     @abstractmethod
+    def recase(self, variable):
+        """recase should convert the variable's name to the correct case for the language.
+
+        e.g. In javascript, a variable should be in camelCase
+
+        """
+        pass
+
+    @abstractmethod
     def api_header_name(self, service):
         """api_header_name should return the name of the file will hold the
         generated content that defines the API.
@@ -303,6 +321,7 @@ class DDPGenerator:
         environment.filters["get_example_value_for_field"] = self.get_example_value_for_field
         environment.filters["find_arguments_proto_by_method_name"] = self.find_arguments_proto_by_method_name
         environment.filters["find_proto_by_name"] = self.find_proto_by_name
+        environment.filters["recase"] = self.recase
 
         # Generate API files.
         for service in services:
