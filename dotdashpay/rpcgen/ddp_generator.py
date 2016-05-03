@@ -39,7 +39,8 @@ import pickle
 import re
 import sys
 
-EXAMPLE_VALUES_FILENAME = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + "example-values.json"
+EXAMPLE_VALUES_FILENAME = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                       "..", "api", "common", "spec", "example-values.json")
 TEMPLATES_DIR = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + "templates"
 
 # Python protobuf module parses the update/completion service options
