@@ -83,6 +83,7 @@ describe("{{service.name}}", function() {
     });
 
     it("should be able to specify an error response with the simulator", function (done) {
+      this.timeout(10000);
       var testErrorMessage = "Test error message";
       var testErrorCode = 1;
       dotdashpay.simulator.setResponse("{{(method | get_method_options | first).name}}",
@@ -101,6 +102,31 @@ describe("{{service.name}}", function() {
           assert.equal(testErrorCode, errorData.errorCode,
                        "Simulator error code was not returned correctly");
           dotdashpay.simulator.resetAllResponses();
+          done();
+        });
+    });
+
+    it("should be able to specify a particular response from the simulator", function(done) {
+      this.timeout(10000);
+      // need a string value that we can overwrite
+      {% set final_cb_name = (method | get_method_options | last).name %}
+      var newVals = {
+        {% for field in ( final_cb_name | find_response_args_proto_by_response_name).field %}
+        {# 9 is the protobuf string type #}
+        {# 3 is the label type for arrays #}
+        {% if field.type == 9 and field.label != 3 %}
+          {{field.name | recase}}: {{field.name | get_example_value_for_field}} + "-changed",
+        {% endif %}
+        {% endfor %}
+      };
+
+      dotdashpay.simulator.setResponse("{{ (method | get_method_options | last).name }}", newVals);
+
+      dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
+        .on{{final_cb_name}}(function(response) {
+          _.each(newVals, function(val, key) {
+            assert.deepEqual(response[key], val);
+          });
           done();
         });
     });

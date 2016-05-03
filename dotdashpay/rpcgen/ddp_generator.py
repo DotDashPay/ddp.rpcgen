@@ -118,6 +118,15 @@ class DDPGenerator:
         """
         return self.find_proto_by_name("{}Args".format(proto))
 
+    def find_response_args_proto_by_response_name(self, proto):
+        """find_response_args_proto_by_response_name
+        returns a DescriptorProto of the proto field for the given response
+
+        This is meant to be 'installed' as a jinja filter.
+        """
+
+        return self.find_proto_by_name(proto)
+
     def find_proto_by_name(self, proto):
         """find_proto_by_name returns a DescriptorProto of the named proto
 
@@ -321,6 +330,7 @@ class DDPGenerator:
             lambda content: get_method_options(content)
         environment.filters["get_example_value_for_field"] = self.get_example_value_for_field
         environment.filters["find_arguments_proto_by_method_name"] = self.find_arguments_proto_by_method_name
+        environment.filters["find_response_args_proto_by_response_name"] = self.find_response_args_proto_by_response_name
         environment.filters["find_proto_by_name"] = self.find_proto_by_name
         environment.filters["recase"] = self.recase
 
