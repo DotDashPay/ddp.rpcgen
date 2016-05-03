@@ -64,7 +64,7 @@ describe("{{service.name}}", function() {
           callbacksVisited++;
           {% if resp.type == "COMPLETION" %}
           assert.equal(callbacksVisited, {{method | get_method_options | length}}, "Not all callbacks were called")
-          setTimeout(done, 500); // let the logging complete
+          done();
           {% endif %}
           // @test-end()
         })
@@ -100,6 +100,7 @@ describe("{{service.name}}", function() {
                        "Simulator error message was not returned correctly");
           assert.equal(testErrorCode, errorData.errorCode,
                        "Simulator error code was not returned correctly");
+          dotdashpay.simulator.resetAllResponses();
           done();
         });
     });
