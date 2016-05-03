@@ -6,7 +6,7 @@
 var _ = require("lodash");
 var assert = require('chai').assert;
 var dotdashpay = require("../lib");
-var fail = require('chai').fail;
+var fail = assert.fail;
 
 dotdashpay.init({simulate: true});
 // @test-end()
@@ -21,22 +21,22 @@ dotdashpay.init({simulate: true});
 // @reference()
 // @single(try-api-short)
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 128})
-    .onError(function (errorData) {
-        console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
-    })
-    .onSettled(function (response) {
-        console.log("Settlement finished! Transaction id: " + response.settle_id);
-    });
+  .onError(function (errorData) {
+    console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
+  })
+  .onSettled(function (response) {
+    console.log("Settlement finished! Transaction id: " + response.settle_id);
+  });
 // @single-end()
 // @reference-end()
 
 // @example-args({{service.name}}.{{method.name}})
 var args = {
-{% for field in (method.name | find_arguments_proto_by_method_name).field %}
+  {% for field in (method.name | find_arguments_proto_by_method_name).field %}
   {% if field.name != "META" %}
-    {{field.name}}: {{field.name | get_example_value_for_field}},
+  {{field.name}}: {{field.name | get_example_value_for_field}},
   {% endif %}
-{% endfor %}
+  {% endfor %}
 };
 // @example-args-end()
 
@@ -44,42 +44,65 @@ var args = {
 describe("{{service.name}}", function() {
   describe("{{method.name|lowercase_first_letter}}", function () {
     it("should have no undefined fields", function (done) {
-    this.timeout(10000);
-    var callbacksVisited = 0;
-// @test-end()
+      this.timeout(10000);
+      var callbacksVisited = 0;
+      // @test-end()
 
-// @example-request({{service.name}}.{{method.name}})
-dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
-        {% for resp in method | get_method_options %}
-            .on{{resp.name}}(function (response) {
-                {% for field in (resp.name | find_proto_by_name).field %}
-                {% if field.name != "META" %}
-                var {{field.name}} = response.{{field.name}}; // {{field.name}} = {{field.name | get_example_value_for_field}}
-                // @test()
-                assert.isDefined({{field.name}});
-                // @test-end()
-                {% endif %}
-                {% endfor%}
-                // @test()
-                callbacksVisited++;
-                {% if resp.type == "COMPLETION" %}
-                assert.equal(callbacksVisited, {{method | get_method_options | length}}, "Not all callbacks were called")
-                setTimeout(done, 500); // let the logging complete
-                {% endif %}
-                // @test-end()
-            })
-        {% endfor %}
-            .onError(function (errorData) {
-                if (errorData.errorCode == "") {
-                    console.log("Error: " + errorData.errorMessage);
-                }
-                // @test()
-                fail(null, null, "This example should never return an error");
-                // @test-end()
-            });
-        // @example-request-end()
+      // @example-request({{service.name}}.{{method.name}})
+      dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
+      {% for resp in method | get_method_options %}
+        .on{{resp.name}}(function (response) {
+          {% for field in (resp.name | find_proto_by_name).field %}
+          {% if field.name != "META" %}
+          var {{field.name}} = response.{{field.name}}; // {{field.name}} = {{field.name | get_example_value_for_field}}
+          // @test()
+          assert.isDefined({{field.name}});
+          // @test-end()
+          {% endif %}
+          {% endfor%}
+          // @test()
+          callbacksVisited++;
+          {% if resp.type == "COMPLETION" %}
+          assert.equal(callbacksVisited, {{method | get_method_options | length}}, "Not all callbacks were called")
+          setTimeout(done, 500); // let the logging complete
+          {% endif %}
+          // @test-end()
+        })
+      {% endfor %}
+        .onError(function (errorData) {
+          if (errorData.errorCode == "") {
+            console.log("Error: " + errorData.errorMessage);
+          }
+          // @test()
+          fail(null, null, "This example should never return an error");
+          // @test-end()
+        });
+      // @example-request-end()
 
-        // @test()
+      // @test()
+    });
+
+    it("should be able to specify an error response with the simulator", function (done) {
+      var testErrorMessage = "Test error message";
+      var testErrorCode = 1;
+      dotdashpay.simulator.setResponse("{{(method | get_method_options | first).name}}",
+                                       {error_message: testErrorMessage,
+                                        error_code: testErrorCode},
+                                       true);
+
+      dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
+      {% for resp in method | get_method_options %}
+        .on{{resp.name}}(function (response) {
+          fail(null, null, "This example should only have an onError callback event, not {{resp.name}}");
+        })
+      {% endfor %}
+        .onError(function (errorData) {
+          assert.equal(testErrorMessage, errorData.error_message,
+                       "Simulator error message was not returned correctly");
+          assert.equal(testErrorCode, errorData.error_code,
+                       "Simulator error code was not returned correctly");
+          done();
+        });
     });
   });
 });
