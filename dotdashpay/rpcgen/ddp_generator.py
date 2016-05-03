@@ -445,10 +445,14 @@ class DDPGenerator:
 
         value = "";
         if isinstance(raw_value, basestring):
-            if has_language:
-                value = "{}{}{}".format(mapping["string_prefix"], raw_value, mapping["string_suffix"])
+            # differentiate between enums and strings here
+            if raw_value[:2] == "e:":
+                value = "\"{}\"".format(raw_value.split(".")[-1])
             else:
-                value = "\"{}\"".format(raw_value)
+                if has_language:
+                    value = "{}{}{}".format(mapping["string_prefix"], raw_value, mapping["string_suffix"])
+                else:
+                    value = "\"{}\"".format(raw_value)
         elif isinstance(raw_value, bool):
             if has_language:
                 value = mapping["true_value"] if raw_value else mapping["false_value"];
