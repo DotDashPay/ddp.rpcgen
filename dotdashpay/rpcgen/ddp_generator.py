@@ -186,6 +186,14 @@ class DDPGenerator:
         pass
 
     @abstractmethod
+    def beautify(self, code):
+        """beautify should return aa string that is a beautified version of
+        that string according to the languages.
+
+        """
+        pass
+
+    @abstractmethod
     def api_header_name(self, service):
         """api_header_name should return the name of the file will hold the
         generated content that defines the API.
@@ -250,6 +258,15 @@ class DDPGenerator:
         """
         pass
 
+    @abstractmethod
+    def tests_source_name(self, method):
+        """tests_source_name should return the name of the file that will
+        hold the test for the method.
+
+        The tests are derived from the example template file.
+        """
+        pass
+
     def render(self, environment, typename, filetype, **kwargs):
         """render returns the contents of a filename using the jinja environment and context.
 
@@ -293,62 +310,104 @@ class DDPGenerator:
             if header_name is not None:
                 generated_header_descriptor = outputs.file.add()
                 generated_header_descriptor.name = header_name
-                generated_header_descriptor.content = self.render(environment, "api", "header",
-                                                                  service = service)
+                generated_header_descriptor.content = self.beautify(
+                    self.render(environment, "api", "header", service = service))
 
         for service in services:
-            generated_source_descriptor = outputs.file.add()
-            generated_source_descriptor.name = self.api_source_name(service)
-            generated_source_descriptor.content = self.render(environment, "api", "source",
-                                                              service = service)
-
+            source_name = self.api_source_name(service)
+            if source_name is not None:
+                generated_source_descriptor = outputs.file.add()
+                generated_source_descriptor.name = source_name
+                generated_source_descriptor.content = self.beautify(
+                    self.render(environment, "api", "source", service = service))
 
         # Generate simulator files.
-        # for service in services:
-        #     header_name = self.simulator_header_name(service)
-        #     if header_name is not None:
-        #         generated_header_descriptor = outputs.file.add()
-        #         generated_header_descriptor.name = header_name
-        #         generated_header_descriptor.content = self.render(environment, "simulator", "header",
-        # service = service)
+        for service in services:
+            header_name = self.simulator_header_name(service)
+            if header_name is not None:
+                generated_header_descriptor = outputs.file.add()
+                generated_header_descriptor.name = header_name
+                generated_header_descriptor.content = self.beautify(
+                    self.render(environment, "simulator", "header", service = service))
 
-        # for service in services:
-        #     generated_source_descriptor = outputs.file.add()
-        #     generated_source_descriptor.name = self.simulator_source_name(service)
-        #     generated_source_descriptor.content = self.render(environment, "simulator", "source",
-        # service = service)
+        for service in services:
+            source_name = self.simulator_source_name(service)
+            if source_name is not None:
+                generated_source_descriptor = outputs.file.add()
+                generated_source_descriptor.name = source_name
+                generated_source_descriptor.content = self.beautify(
+                    self.render(environment, "simulator", "source", service = service))
 
         # Generate example files. Standalone example files are for
         # reading purposes. The singular file (which is appended with
         # ".reference" is meant to be passed to generate-reference.js
         # in the api/common/spec directory.
-        re_reference_ignore = re.compile(r"// ?@reference-ignore(.*?)// ?@reference-ignore-end\(\)\n", re.DOTALL)
-        re_includes = re.compile(ur"// ?@example-includes(.*?)// ?@example-includes-end\(\)\n", re.DOTALL)
-        re_reference_comments = re.compile(r"// @.*\n?")
+        re_example = re.compile(r"// ?@example(.*?)// ?@example-end\(\)\n?", re.DOTALL)
+        re_reference = re.compile(r"// ?@reference(.*?)// ?@reference-end\(\)\n?", re.DOTALL)
+        re_test = re.compile(r"// ?@test(.*?)// ?@test-end\(\)\n?", re.DOTALL)
+        re_lib_setup = re.compile(ur"// ?@example-lib-setup(.*?)// ?@example-lib-setup-end\(\)\n?", re.DOTALL)
+        re_singles = re.compile(ur"// ?@single\((.*?)\)(.*?)// ?@single-end\(\)\n?", re.DOTALL)
+        re_markup = re.compile(r"// @.*\n?")
 
-        contents_for_reference = ""
-        include_lines = ""
-        include_dedup = set()
+        reference_content = ""
+
+        singles_lines = {}
+        singles_dedup = {}
 
         for service in services:
             for method in service.method:
+                source_name = self.examples_source_name(method.name)
+                if source_name is None:
+                    continue
+
                 generated_source_descriptor = outputs.file.add()
-                generated_source_descriptor.name = self.examples_source_name(method.name)
+                generated_source_descriptor.name = source_name
 
                 content = self.render(environment, "examples", "source", method = method, service = service)
-                generated_source_descriptor.content = re_reference_comments.sub("", content)
+                example_content = re_markup.sub("", re_reference.sub("", re_test.sub("", content)))
+                generated_source_descriptor.content = self.beautify(example_content)
 
-                contents_for_reference += re_includes.sub("", re_reference_ignore.sub("", content))
+                reference_content += re_test.sub("", re_singles.sub("", content))
 
-                include_block = re_includes.search(content).group(0)
-                for line in iter(include_block.splitlines()):
-                    if not line in include_dedup:
-                        include_lines += "{}\n".format(line)
-                        include_dedup.add(line)
+                singles = re_singles.findall(content)
+                for single in singles:
+                    identifier = single[0]
+                    block = single[1]
 
-        generated_source_descriptor = outputs.file.add()
-        generated_source_descriptor.name = self.examples_source_name("reference")
-        generated_source_descriptor.content = "{}\n\n{}".format(include_lines, contents_for_reference)
+                    if identifier not in singles_dedup:
+                        singles_lines[identifier] = []
+                        singles_dedup[identifier] = set()
+
+                    for line in iter(block.splitlines()):
+                        if line not in singles_lines[identifier]:
+                            singles_lines[identifier].append(line)
+                            singles_dedup[identifier].add(line)
+
+                # Generate the test file as well
+                source_name = self.tests_source_name(method.name)
+                if source_name is None:
+                    continue
+
+                generated_source_descriptor = outputs.file.add()
+                generated_source_descriptor.name = source_name
+                test_content = re_markup.sub("", re_example.sub("", re_reference.sub("", content)))
+                generated_source_descriptor.content = self.beautify(test_content)
+
+
+        source_name = self.examples_source_name("reference")
+        if source_name is not None:
+            generated_source_descriptor = outputs.file.add()
+            generated_source_descriptor.name = source_name
+
+            reference_single_content = ""
+            for identifier in singles_lines:
+                reference_single_content += "// @{}(){}\n// @{}-end()\n\n".format(
+                    identifier,
+                    "\n".join(singles_lines[identifier]),
+                    identifier)
+
+            generated_source_descriptor.content = self.beautify(
+                "{}\n\n{}".format(reference_single_content, reference_content))
 
 
     def _map_raw_example_value_to_language(self, raw_value):
