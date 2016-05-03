@@ -50,6 +50,54 @@ RESPONSE_TYPE = {
     "\x92\xb5\x18": "COMPLETION"
 }
 
+def proto_field_number_bytes_to_number(proto_bytes_as_str):
+    """proto_field_number_bytes_to_number takes a raw set of bytes and
+    converts it to a protobuf field number.
+
+    """
+    # First byte has 3 bits that tell us the type, but that's always a
+    # varint (0).
+    proto_bytes = bytes(proto_bytes_as_str)
+    byte1 = (ord(proto_bytes[0]) & 0x7f) >> 3
+
+    # We know that all of the bytes are part of the number since this
+    # is just a single field so we don't need to figure out where the
+    # end byte is.
+    total = 0
+    shift = 4 + (len(proto_bytes) - 2) * 7
+    for byte in reversed(proto_bytes[1:]):
+        # Drop the MSB.
+        byte = ord(byte) & 0x7f
+        total += (byte << shift)
+        shift -= 7
+    total += byte1
+
+    return total
+
+def lookup_option_values(option_name, option_declaration_container, option_definition_container):
+    """lookup_option_values attempts to locate the option_name, which is
+    declared in the declaration container, in the definition
+    container.
+
+    """
+    extension_number = -1
+    for extension in option_declaration_container.extension:
+        if extension.name == option_name:
+            extension_number = extension.number
+            break
+    if extension_number == -1:
+        return None
+
+    options = []
+    for option in option_definition_container.options._unknown_fields:
+        if proto_field_number_bytes_to_number(option[0]) == extension_number:
+            options.append((ord(option[0][0]) & 0x7, option[1]))
+
+    if len(options) == 0:
+        return None
+    else:
+        return options
+
 def get_method_options(method):
     """
     ARE YOU SEEING DICT KEY ERRORS IN THIS METHOD?
@@ -134,7 +182,56 @@ class DDPGenerator:
                 if message.name == proto:
                     return message
 
+    def service_file(self, service_name):
+        """service_file is meant to be used as a jinja filter to lookup a file
+        descriptor based on a service name.
+
+        This mapping is created in find_services.
+
+        """
+        if service_name in self.service_files:
+            return self.service_files[service_name]
+        else:
+            raise("Could not find file associated with service: {}".format(service_name))
+
+    def option_value(self, option_definition_container, option_name):
+        """option_value is meant to be used a jinja filter to get an option
+        value from a proto entity that defines that option.
+
+        Options can be on files, services, methods, etc. Whatever the
+        case may be, the entity that defines the option should be
+        passed in as the second parameter.
+
+        E.g. api_minor_version is declared in
+        api/common/protobuf/common.proto and used in several other
+        protos. To find the value of the option in say payment.proto,
+        you would pass in the FileDescriptorProto that describes the
+        payment.proto file as the second argument.
+
+        """
+        values = []
+        for pfile in self.files:
+            option_values = lookup_option_values(option_name, pfile, option_definition_container)
+            if option_values is not None:
+                for option_value in option_values:
+                    if option_value[0] == 0x0:
+                        values.append(ord(option_value[1]))
+                    elif option_value[0] == 0x02:
+                        offset = 1
+                        while ord(option_value[1][offset - 1]) > 0x7f:
+                            offset += 1
+                        values.append(str(option_value[1][offset:]))
+
+        if len(values) == 0:
+            return None
+        elif len(values) == 1:
+            return values[0]
+        else:
+            return values
+
+
     def find_services(self, fileset):
+
         """find_services returns of list of protos that define services in the
         fileset.
 
@@ -147,8 +244,12 @@ class DDPGenerator:
 
         """
         services = []
+        self.service_files = {}
+        self.files = []
         for pfile in fileset.proto_file:
+            self.files.append(pfile)
             for service in pfile.service:
+                self.service_files[service.name] = pfile
                 services.append(service)
         return services
 
@@ -349,6 +450,8 @@ class DDPGenerator:
         environment.filters["find_arguments_proto_by_method_name"] = self.find_arguments_proto_by_method_name
         environment.filters["find_proto_by_name"] = self.find_proto_by_name
         environment.filters["recase"] = self.recase
+        environment.filters["service_file"] = self.service_file
+        environment.filters["option_value"] = self.option_value
 
         # Generate API files.
         for service in services:
