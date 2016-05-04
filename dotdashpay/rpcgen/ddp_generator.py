@@ -257,17 +257,16 @@ class DDPGenerator:
         return services
 
     def output_dir(self, typename):
-        """output_dir returns the output dir for the typename based on the
-        language.
+        """output_dir returns the output dir for the typename.
 
-        This method checks for an environment variable
-        {LANGUAGE}_{TYPENAME}_DIR and otherwise just returns empty.
+        This method checks for an environment variable {TYPENAME}_DIR
+        and otherwise just returns ".".
 
         This output directory should be relative to the output
         directory specified to protoc.
 
         """
-        setting = "{}_{}_DIR".format(self.language().upper(), typename.upper())
+        setting = "{}_DIR".format(typename.upper())
         if setting in os.environ:
             return os.environ[setting]
         else:
@@ -559,21 +558,23 @@ class DDPGenerator:
                 lines = "\n".join(singles_lines[identifier])
                 reference_single_content += "// @{}{}\n// @{}\n\n".format(identifier, lines, end_tag)
 
-            generated_source_descriptor.content = self.beautify(
-                "{}\n\n{}".format(reference_single_content, reference_content))
-
+            reference_content = self.beautify("{}\n\n{}".format(reference_single_content, reference_content))
+            generated_source_descriptor.content = reference_content
 
             # The reference can contain standalone examples which we
             # denote in order to render them into separate files.
-            standalones = re_standalones.findall(generated_source_descriptor.content)
+            standalones = re_standalones.findall(reference_content)
             for standalone in standalones:
                 identifier = standalone[0]
                 block = standalone[1]
 
                 source_name = self.examples_source_name(identifier)
+                output_dir = self.output_dir("standalone")
+                if output_dir == ".":
+                    output_dir = self.output_dir("examples")
 
                 generated_source_descriptor = outputs.file.add()
-                generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
+                generated_source_descriptor.name = "{}/{}_{}".format(output_dir, self.language(), source_name)
                 generated_source_descriptor.content = self.beautify(block)
 
 
