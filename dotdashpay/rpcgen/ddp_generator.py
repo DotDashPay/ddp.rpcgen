@@ -3,11 +3,24 @@ into a languge-specific API implementation.
 
 Example call:
 
-protoc -I../../ -I/usr/local/include --plugin=protoc-gen-ddprpc=./generator.py --ddprpc_out=../../../ddp.api.node/lib/autogen/ ../../dotdashpay/api/common/protobuf/services.proto
+EXAMPLES_DIR=../../examples \
+TESTS_DIR=../../tests \
+STANDALONE_DIR=../../../ddp.server.developer/views/examples \
+protoc \
+-I../../ -I/usr/local/include \
+--plugin=protoc-gen-ddprpc=./generator.py \
+--ddprpc_out=../../../ddp.api.node/lib/autogen/ \
+../../dotdashpay/api/common/protobuf/services.proto
 
-While there is no way to pass an argument to the generator via protoc
-(it does not allow this), you can set the following environment
-variables to control how this program is executed:
+Notice the first 3 lines are actually setting environment
+variables. This is because protoc doesn't allow command line
+arguments. Those first 3 lines control the output of the various
+markup regions in the jinja templates when the generator outputs the
+examples, tests, and standalone code samples (for the connect
+tutorials).
+
+In addition, you can set the following environment variables to
+control how this program is executed:
 
 == RPCGEN_DATA_FILE
 
@@ -19,7 +32,7 @@ debug programs.
 
 == RPCGEN_DEBUG_MODE
 
-Set the to 1 if you want to run this program in standalone mode. You
+Set this to 1 if you want to run this program in standalone mode. You
 must first run the program using the above command line and then can
 subsequently run the program directly to insert breakpoints.
 
@@ -39,8 +52,8 @@ import pickle
 import re
 import sys
 
-EXAMPLE_VALUES_FILENAME = os.path.sep.join([os.path.dirname(os.path.realpath(__file__)),
-                                            "..", "api", "common", "spec", "example-values.json"])
+EXAMPLE_VALUES_FILENAME = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                       "..", "api", "common", "spec", "example-values.json")
 TEMPLATES_DIR = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + "templates"
 
 # Python protobuf module parses the update/completion service options
@@ -172,6 +185,15 @@ class DDPGenerator:
 
         """
         return self.find_proto_by_name("{}Args".format(proto))
+
+    def find_response_args_proto_by_response_name(self, proto):
+        """find_response_args_proto_by_response_name
+        returns a DescriptorProto of the proto field for the given response
+
+        This is meant to be 'installed' as a jinja filter.
+        """
+
+        return self.find_proto_by_name(proto)
 
     def find_proto_by_name(self, proto):
         """find_proto_by_name returns a DescriptorProto of the named proto
@@ -450,6 +472,7 @@ class DDPGenerator:
             lambda content: get_method_options(content)
         environment.filters["get_example_value_for_field"] = self.get_example_value_for_field
         environment.filters["find_arguments_proto_by_method_name"] = self.find_arguments_proto_by_method_name
+        environment.filters["find_response_args_proto_by_response_name"] = self.find_response_args_proto_by_response_name
         environment.filters["find_proto_by_name"] = self.find_proto_by_name
         environment.filters["recase"] = self.recase
         environment.filters["service_file"] = self.service_file
@@ -593,10 +616,14 @@ class DDPGenerator:
 
         value = "";
         if isinstance(raw_value, basestring):
-            if has_language:
-                value = "{}{}{}".format(mapping["string_prefix"], raw_value, mapping["string_suffix"])
+            # differentiate between enums and strings here
+            if raw_value[:2] == "e:":
+                value = "\"{}\"".format(raw_value.split(".")[-1])
             else:
-                value = "\"{}\"".format(raw_value)
+                if has_language:
+                    value = "{}{}{}".format(mapping["string_prefix"], raw_value, mapping["string_suffix"])
+                else:
+                    value = "\"{}\"".format(raw_value)
         elif isinstance(raw_value, bool):
             if has_language:
                 value = mapping["true_value"] if raw_value else mapping["false_value"];

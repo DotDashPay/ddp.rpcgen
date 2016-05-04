@@ -5,11 +5,11 @@
 // @example-args({{service.name}}.{{method.name}})
 {% endif %}
 var args = {
-    {% for field in (method.name | find_arguments_proto_by_method_name).field %}
-    {% if field.name != "META" %}
-    {{field.name | recase}}: {{field.name | get_example_value_for_field}},
-    {% endif %}
-    {% endfor %}
+  {% for field in (method.name | find_arguments_proto_by_method_name).field %}
+  {% if field.name != "META" %}
+  {{field.name | recase}}: {{field.name | get_example_value_for_field}},
+  {% endif %}
+  {% endfor %}
 };
 {% if is_example %}
 // @example-args-end()
@@ -17,48 +17,103 @@ var args = {
 
 // @test()
 describe("{{service.name}}", function() {
-    describe("{{method.name|lowercase_first_letter}}", function () {
-        it("should have no undefined fields", function (done) {
-            this.timeout(10000);
-            var callbacksVisited = 0;
-            // @test-end()
-            {% if is_example %}
-            // @example-request({{service.name}}.{{method.name}})
-            {% endif %}
-            dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
-            {% for resp in method | get_method_options %}
-                .on{{resp.name}}(function (response) {
-                    {% for field in (resp.name | find_proto_by_name).field %}
-                    {% if field.name != "META" %}
-                    var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
-                    // @test()
-                    assert.isDefined({{field.name | recase}});
-                    // @test-end()
-                    {% endif %}
-                    {% endfor%}
-                    // @test()
-                    callbacksVisited++;
-                    {% if resp.type == "COMPLETION" %}
-                    assert.equal(callbacksVisited, {{method | get_method_options | length}}, "Not all callbacks were called")
-                    setTimeout(done, 500); // let the logging complete
-                    {% endif %}
-                    // @test-end()
-                })
-            {% endfor %}
-                .onError(function (errorData) {
-                    if (errorData.errorCode == "") {
-                        console.log("Error: " + errorData.errorMessage);
-                    }
-                    // @test()
-                    fail(null, null, "This example should never return an error");
-                    // @test-end()
-                });
-            {% if is_example %}
-            // @example-request-end()
-            {% endif %}
-            // @test()
+  describe("{{method.name|lowercase_first_letter}}", function () {
+    beforeEach(function () {
+      dotdashpay._reset();
+      dotdashpay.setup({simulate: true});
+    });
+
+    it("should have no undefined fields", function (done) {
+      this.timeout(10000);
+      var callbacksVisited = 0;
+      // @test-end()
+      {% if is_example %}
+      // @example-request({{service.name}}.{{method.name}})
+      {% endif %}
+      dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
+      {% for resp in method | get_method_options %}
+        .on{{resp.name}}(function (response) {
+          {% for field in (resp.name | find_proto_by_name).field %}
+          {% if field.name != "META" %}
+          var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
+          // @test()
+          assert.isDefined({{field.name | recase}});
+          // @test-end()
+          {% endif %}
+          {% endfor%}
+          // @test()
+          callbacksVisited++;
+          {% if resp.type == "COMPLETION" %}
+          assert.equal(callbacksVisited, {{method | get_method_options | length}}, "Not all callbacks were called")
+          done();
+          {% endif %}
+          // @test-end()
+        })
+      {% endfor %}
+        .onError(function (errorData) {
+          if (errorData.errorCode == "") {
+            console.log("Error: " + errorData.errorMessage);
+          }
+          // @test()
+          fail(null, null, "This example should never return an error");
+          // @test-end()
+        });
+      {% if is_example %}
+      // @example-request-end()
+      {% endif %}
+
+      // @test()
+    });
+
+    it("should be able to specify an error response with the simulator", function (done) {
+      this.timeout(10000);
+      var testErrorMessage = "Test error message";
+      var testErrorCode = 1;
+      dotdashpay.simulator.setResponse("{{(method | get_method_options | first).name}}",
+                                       {errorMessage: testErrorMessage,
+                                        errorCode: testErrorCode},
+                                       true);
+      dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
+      {% for resp in method | get_method_options %}
+        .on{{resp.name}}(function (response) {
+          fail(null, null, "This example should only have an onError callback event, not {{resp.name}}");
+        })
+      {% endfor %}
+        .onError(function (errorData) {
+          assert.equal(testErrorMessage, errorData.errorMessage,
+                       "Simulator error message was not returned correctly");
+          assert.equal(testErrorCode, errorData.errorCode,
+                       "Simulator error code was not returned correctly");
+          dotdashpay.simulator.resetAllResponses();
+          done();
         });
     });
+
+    it("should be able to specify a particular response from the simulator", function(done) {
+      this.timeout(10000);
+      // need a string value that we can overwrite
+      {% set final_cb_name = (method | get_method_options | last).name %}
+      var newVals = {
+        {% for field in ( final_cb_name | find_response_args_proto_by_response_name).field %}
+        {# 9 is the protobuf string type #}
+        {# 3 is the label type for arrays #}
+        {% if field.type == 9 and field.label != 3 %}
+        {{field.name | recase}}: {{field.name | get_example_value_for_field}} + "-changed",
+        {% endif %}
+        {% endfor %}
+      };
+
+      dotdashpay.simulator.setResponse("{{ (method | get_method_options | last).name }}", newVals);
+
+      dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
+        .on{{final_cb_name}}(function(response) {
+          _.each(newVals, function(val, key) {
+            assert.deepEqual(response[key], val);
+          });
+          done();
+        });
+    });
+  });
 });
 // @test-end()
 {%- endmacro %}
@@ -74,28 +129,26 @@ describe("{{service.name}}", function() {
 // @test()
 var _ = require("lodash");
 var assert = require('chai').assert;
-var dotdashpay = require("../lib");
-var fail = require('chai').fail;
-
-dotdashpay.init({simulate: true});
+var dotdashpay = require("..");
+var fail = assert.fail;
 // @test-end()
 
 // @example()
 // @single(lib-setup())
 var dotdashpay = require("dotdashpay");
-dotdashpay.init({simulate: true});
+dotdashpay.setup({simulate: true});
 // @single-end()
 // @example-end()
 
 // @reference()
 // @single(standalone(try_api_short))
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
-    .onError(function (errorData) {
-        console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
-    })
-    .onSettled(function (response) {
-        console.log("Settlement finished! Transaction id: " + response.settle_id);
-    });
+  .onError(function (errorData) {
+    console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
+  })
+  .onSettled(function (response) {
+    console.log("Settlement finished! Transaction id: " + response.settle_id);
+  });
 // @single-end()
 // @reference-end()
 

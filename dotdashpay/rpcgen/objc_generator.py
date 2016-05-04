@@ -25,7 +25,7 @@ class ObjectiveCGenerator(DDPGenerator):
         if not os.path.isfile(UNCRUSTIFY_PATH):
             raise "Cannot beautify Objective-C code without uncrustify, which can be built via setup.sh"
 
-        pipe = Popen([UNCRUSTIFY_PATH, "-c", "{}".format(UNCRUSTIFY_CFG)],
+        pipe = Popen([UNCRUSTIFY_PATH, "-q", "-c", "{}".format(UNCRUSTIFY_CFG)],
                      stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         output = pipe.communicate(input="{}\n".format(code))[0]
         return output.decode()
