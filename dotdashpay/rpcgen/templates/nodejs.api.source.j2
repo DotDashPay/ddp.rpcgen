@@ -11,7 +11,7 @@ module.exports.{{method.name | lowercase_first_letter}} = function {{method.name
     var request = new {{method.name}}Request({{method.input_type | remove_package | lowercase_first_letter}});
     server.sendRequest(request);
     return request;
-}
+};
 
 {% endfor %}
 
