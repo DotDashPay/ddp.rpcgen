@@ -39,7 +39,8 @@ import pickle
 import re
 import sys
 
-EXAMPLE_VALUES_FILENAME = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + "example-values.json"
+EXAMPLE_VALUES_FILENAME = os.path.sep.join([os.path.dirname(os.path.realpath(__file__)),
+                                            "..", "api", "common", "spec", "example-values.json"])
 TEMPLATES_DIR = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + "templates"
 
 # Python protobuf module parses the update/completion service options
@@ -80,23 +81,23 @@ def lookup_option_values(option_name, option_declaration_container, option_defin
     container.
 
     """
-    extension_number = -1
-    for extension in option_declaration_container.extension:
-        if extension.name == option_name:
-            extension_number = extension.number
+    extension = None
+    for option in option_declaration_container.extension:
+        if option.name == option_name:
+            extension = option
             break
-    if extension_number == -1:
-        return None
+    if extension is None:
+        return (None, None)
 
     options = []
     for option in option_definition_container.options._unknown_fields:
-        if proto_field_number_bytes_to_number(option[0]) == extension_number:
+        if proto_field_number_bytes_to_number(option[0]) == extension.number:
             options.append((ord(option[0][0]) & 0x7, option[1]))
 
     if len(options) == 0:
-        return None
+        return (extension, None)
     else:
-        return options
+        return (extension, options)
 
 def get_method_options(method):
     """
@@ -121,7 +122,8 @@ def to_camel_case(snake_str):
 
     """
     components = snake_str.split('_')
-    return components[0] + "".join(x.title() for x in components[1:])
+    combined = components[0] + "".join(x.title() for x in components[1:])
+    return combined[0].lower() + combined[1:]
 
 class DDPGenerator:
     """DDPGenerator is an abstract class that is used to generate the API
@@ -194,8 +196,8 @@ class DDPGenerator:
         else:
             raise("Could not find file associated with service: {}".format(service_name))
 
-    def option_value(self, option_definition_container, option_name):
-        """option_value is meant to be used a jinja filter to get an option
+    def option_values(self, option_definition_container, option_name):
+        """option_values is meant to be used a jinja filter to get an option
         value from a proto entity that defines that option.
 
         Options can be on files, services, methods, etc. Whatever the
@@ -211,7 +213,7 @@ class DDPGenerator:
         """
         values = []
         for pfile in self.files:
-            option_values = lookup_option_values(option_name, pfile, option_definition_container)
+            (extension, option_values) = lookup_option_values(option_name, pfile, option_definition_container)
             if option_values is not None:
                 for option_value in option_values:
                     if option_value[0] == 0x0:
@@ -221,13 +223,14 @@ class DDPGenerator:
                         while ord(option_value[1][offset - 1]) > 0x7f:
                             offset += 1
                         values.append(str(option_value[1][offset:]))
+                # Should only be one
+                break
 
-        if len(values) == 0:
-            return None
-        elif len(values) == 1:
+        # LABEL_REPEATED = 3
+        #import ipdb; ipdb.set_trace()
+        if (extension is not None) and (extension.label != 3):
             return values[0]
-        else:
-            return values
+        return values
 
 
     def find_services(self, fileset):
@@ -426,7 +429,7 @@ class DDPGenerator:
 
         """
         template_filename = "{}.{}.{}.j2".format(self.language(), typename, filetype)
-        return environment.get_template(template_filename).render(**kwargs)
+        return environment.get_template(template_filename).render(generator = self, **kwargs)
 
     def generate(self, services, outputs):
         """generate is the main method of the generators.
@@ -451,7 +454,7 @@ class DDPGenerator:
         environment.filters["find_proto_by_name"] = self.find_proto_by_name
         environment.filters["recase"] = self.recase
         environment.filters["service_file"] = self.service_file
-        environment.filters["option_value"] = self.option_value
+        environment.filters["option_values"] = self.option_values
 
         # Generate API files.
         for service in services:
@@ -497,6 +500,7 @@ class DDPGenerator:
         re_lib_setup = re.compile(ur"// ?@example-lib-setup(.*?)// ?@example-lib-setup-end\(\)\n?", re.DOTALL)
         re_singles = re.compile(ur"// ?@single\((.*?)\)(.*?)// ?@single-end\(\)\n?", re.DOTALL)
         re_markup = re.compile(r"// @.*\n?")
+        re_standalones = re.compile(ur"// ?@standalone\((.*?)\)(.*?)// ?@standalone-end\(\)\n?", re.DOTALL)
 
         reference_content = ""
 
@@ -550,13 +554,27 @@ class DDPGenerator:
 
             reference_single_content = ""
             for identifier in singles_lines:
-                reference_single_content += "// @{}(){}\n// @{}-end()\n\n".format(
-                    identifier,
-                    "\n".join(singles_lines[identifier]),
-                    identifier)
+                open_paren = identifier.find("(")
+                end_tag = identifier[:open_paren] + "-end()"
+                lines = "\n".join(singles_lines[identifier])
+                reference_single_content += "// @{}{}\n// @{}\n\n".format(identifier, lines, end_tag)
 
             generated_source_descriptor.content = self.beautify(
                 "{}\n\n{}".format(reference_single_content, reference_content))
+
+
+            # The reference can contain standalone examples which we
+            # denote in order to render them into separate files.
+            standalones = re_standalones.findall(generated_source_descriptor.content)
+            for standalone in standalones:
+                identifier = standalone[0]
+                block = standalone[1]
+
+                source_name = self.examples_source_name(identifier)
+
+                generated_source_descriptor = outputs.file.add()
+                generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
+                generated_source_descriptor.content = self.beautify(block)
 
 
     def _map_raw_example_value_to_language(self, raw_value):
