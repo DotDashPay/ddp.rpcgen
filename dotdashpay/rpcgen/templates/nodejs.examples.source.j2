@@ -12,15 +12,15 @@ dotdashpay.init({simulate: true});
 // @test-end()
 
 // @example()
-// @single(lib-setup)
+// @single(lib-setup())
 var dotdashpay = require("dotdashpay");
 dotdashpay.init({simulate: true});
 // @single-end()
 // @example-end()
 
 // @reference()
-// @single(try-api-short)
-dotdashpay.payment.receivePaymentDataThenSettle({cents: 128})
+// @single(standalone(try_api_short))
+dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
     .onError(function (errorData) {
         console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
     })
