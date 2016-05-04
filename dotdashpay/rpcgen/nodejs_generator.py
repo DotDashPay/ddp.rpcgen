@@ -26,10 +26,10 @@ class NodeJsGenerator(DDPGenerator):
         return None
 
     def examples_source_name(self, method_name):
-        return "../../examples/" + method_name + ".example.js"
+        return method_name + ".example.js"
 
     def tests_source_name(self, method_name):
-        return "../../tests/" + method_name + ".test.js"
+        return method_name + ".test.js"
 
 if __name__ == '__main__':
     NodeJsGenerator().run()
