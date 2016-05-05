@@ -132,15 +132,14 @@ var dotdashpay = require("..");
 var fail = assert.fail;
 // @test-end()
 
-// @example()
-// @single(lib-setup())
-var dotdashpay = require("dotdashpay");
-dotdashpay.setup({simulate: true});
-// @single-end()
-// @example-end()
-
 // @reference()
 // @single(standalone(try_api_short))
+var dotdashpay = require("dotdashpay");
+dotdashpay.setup({
+  simulate: true,
+  apiToken: "@api-token()"
+});
+
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
   .onSettled(function (response) {
     console.log("Settlement finished! Transaction id: " + response.settle_id);
@@ -155,7 +154,10 @@ dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
 // @reference()
 // @standalone(try_api_expanded)
 var dotdashpay = require("dotdashpay");
-dotdashpay.init({simulate: true});
+dotdashpay.setup({
+  simulate: true,
+  apiToken: "@api-token()"
+});
 
 {{render(is_example=False)}}
 // @standalone-end()

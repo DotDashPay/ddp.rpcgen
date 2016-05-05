@@ -8,7 +8,10 @@ class NodeJsGenerator(DDPGenerator):
         return "nodejs"
 
     def beautify(self, code):
-        return jsbeautifier.beautify(code)
+        opts = jsbeautifier.default_options()
+        opts.indent_size = 2
+        opts.brace_style = "collapse-preserve-inline"
+        return jsbeautifier.beautify(code, opts)
 
     def recase(self, variable):
         return to_camel_case(variable)
