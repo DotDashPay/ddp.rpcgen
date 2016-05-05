@@ -42,6 +42,12 @@ describe("{{service.name}}", function() {
           // @test-end()
           {% endif %}
           {% endfor%}
+	    
+	  {% if not is_example %}
+	    process.exit(0);
+	  {% endif %}
+
+
           // @test()
           callbacksVisited++;
           {% if resp.type == "COMPLETION" %}
@@ -143,9 +149,11 @@ dotdashpay.setup({
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
   .onSettled(function (response) {
     console.log("Settlement finished! Transaction id: " + response.settle_id);
+    process.exit(0);
   })
   .onError(function (errorData) {
     console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
+    process.exit(0);
   });
 // @single-end()
 // @reference-end()
