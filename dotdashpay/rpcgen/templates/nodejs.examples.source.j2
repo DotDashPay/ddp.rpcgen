@@ -33,6 +33,7 @@ describe("{{service.name}}", function() {
       dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
       {% for resp in method | get_method_options %}
         .on{{resp.name}}(function (response) {
+          console.log("Receive on{{resp.name}} response", JSON.stringify(response));
           {% for field in (resp.name | find_proto_by_name).field %}
           {% if field.name != "META" %}
           var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
@@ -51,9 +52,7 @@ describe("{{service.name}}", function() {
         })
       {% endfor %}
         .onError(function (errorData) {
-          if (errorData.errorCode == "") {
-            console.log("Error: " + errorData.errorMessage);
-          }
+          console.log("Error", JSON.stringify(errorData));
           // @test()
           fail(null, null, "This example should never return an error");
           // @test-end()
@@ -143,11 +142,11 @@ dotdashpay.setup({simulate: true});
 // @reference()
 // @single(standalone(try_api_short))
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
-  .onError(function (errorData) {
-    console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
-  })
   .onSettled(function (response) {
     console.log("Settlement finished! Transaction id: " + response.settle_id);
+  })
+  .onError(function (errorData) {
+    console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
   });
 // @single-end()
 // @reference-end()
