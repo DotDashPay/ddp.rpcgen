@@ -48,12 +48,10 @@ describe("{{service.name}}", function() {
           // @test-end()
           {% endif %}
           {% endfor%}
-	    
-	  {% if not is_example %}
-	    process.exit(0);
-	  {% endif %}
+          {% if not is_example and resp.type == "COMPLETION" %}
 
-
+           process.exit(0);
+          {% endif %}
           // @test()
           callbacksVisited++;
           {% if resp.type == "COMPLETION" %}
@@ -65,6 +63,10 @@ describe("{{service.name}}", function() {
       {% endfor %}
         .onError(function (errorData) {
           console.log("Error", JSON.stringify(errorData));
+          {% if not is_example %}
+
+           process.exit(0);
+          {% endif %}
           // @test()
           fail(null, null, "This example should never return an error");
           // @test-end()
