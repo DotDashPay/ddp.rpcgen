@@ -571,8 +571,8 @@ class DDPGenerator:
 
         source_name = self.examples_source_name("reference")
         if source_name is not None:
-            generated_source_descriptor = outputs.file.add()
-            generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
+            reference_source_descriptor = outputs.file.add()
+            reference_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
 
             reference_single_content = ""
             for identifier in singles_lines:
@@ -582,7 +582,6 @@ class DDPGenerator:
                 reference_single_content += "// @{}{}\n// @{}\n\n".format(identifier, lines, end_tag)
 
             reference_content = self.beautify("{}\n\n{}".format(reference_single_content, reference_content))
-            generated_source_descriptor.content = reference_content
 
             # The reference can contain standalone examples which we
             # denote in order to render them into separate files.
@@ -605,6 +604,9 @@ class DDPGenerator:
                 generated_source_descriptor.content = self.beautify(block)
 
                 standalone_dedup.add(identifier)
+
+            # Remove standalones from reference.
+            reference_source_descriptor.content = re.sub(re_standalones, "", reference_content)
 
 
     def _map_raw_example_value_to_language(self, raw_value):
