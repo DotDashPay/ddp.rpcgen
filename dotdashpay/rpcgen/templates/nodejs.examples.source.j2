@@ -33,7 +33,7 @@ describe("{{service.name}}", function() {
       dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
       {% for resp in method | get_method_options %}
         .on{{resp.name}}(function (response) {
-          console.log("Receive on{{resp.name}} response", JSON.stringify(response));
+          console.log("Received on{{resp.name}} response", JSON.stringify(response));
           {% for field in (resp.name | find_proto_by_name).field %}
           {% if field.name != "META" %}
           var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
