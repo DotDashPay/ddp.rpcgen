@@ -167,7 +167,7 @@ dotdashpay.setup({
 
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
   .onSettled(function (response) {
-    console.log("Settlement finished! Transaction id: " + response.settle_id);
+    console.log("Settlement finished! Transaction id: " + response.settleId);
     process.exit(0);
   })
   .onError(function (errorData) {
