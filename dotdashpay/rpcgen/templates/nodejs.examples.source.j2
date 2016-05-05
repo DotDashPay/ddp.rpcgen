@@ -147,7 +147,7 @@ var fail = assert.fail;
 // @test-end()
 
 // @reference()
-// @single(standalone(try_api_short))
+// @standalone(try_api_short)
 var dotdashpay = require("dotdashpay");
 dotdashpay.setup({
   simulate: true,
@@ -163,7 +163,7 @@ dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
     console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
     process.exit(0);
   });
-// @single-end()
+// @standalone-end()
 // @reference-end()
 
 {% if method.name == "ReceivePaymentDataThenSettle" %}
