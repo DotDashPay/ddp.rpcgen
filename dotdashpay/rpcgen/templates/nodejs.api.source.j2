@@ -45,6 +45,10 @@ var {{method.name}}Request = function {{method.name}}Request(requestDataArgs) {
   var thisProtobuf = thisReq._protobuf;
   if (requestDataArgs) {
       _.each(requestDataArgs, function (val, key) {
+          if (thisProtobuf[key] === undefined) {
+             throw new Error("Request '{{ method.name|lowercase_first_letter }}' does not accept an argument with name '" + key + "'");
+          }
+
           thisProtobuf[key] = val;
       });
   }
