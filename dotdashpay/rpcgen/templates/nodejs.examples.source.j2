@@ -34,9 +34,15 @@ describe("{{service.name}}", function() {
       {% for resp in method | get_method_options %}
         .on{{resp.name}}(function (response) {
           console.log("Received on{{resp.name}} response", JSON.stringify(response));
+          {% set first = True %}
           {% for field in (resp.name | find_proto_by_name).field %}
           {% if field.name != "META" %}
-          var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | recase}} = {{field.name | get_example_value_for_field}}
+          {% if first %}
+          {% set first = False %}
+          var {{field.name | recase}} = response.{{field.name | recase}}; // e.g. {{field.name | get_example_value_for_field}}
+          {% else %}
+          var {{field.name | recase}} = response.{{field.name | recase}}; // {{field.name | get_example_value_for_field}}
+          {% endif %}
           // @test()
           assert.isDefined({{field.name | recase}});
           // @test-end()
