@@ -126,6 +126,17 @@ describe("{{service.name}}", function() {
           done();
         });
     });
+
+    it("should throw an error when a field is input that does not exist", function() {
+      var errRegexp = new RegExp("does not accept an argument with name");
+      try {
+        dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}({nonExistantFieldNameYEah: 5})
+      } catch (err) {
+        assert.isTrue(errRegexp.test(String(err)));
+        return
+      }
+      throw new Error("Did not throw an error when rpc '{{method.name|lowercase_first_letter}}' called with non existant field");
+    });
   });
 });
 // @test-end()
@@ -156,7 +167,7 @@ dotdashpay.setup({
 
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
   .onSettled(function (response) {
-    console.log("Settlement finished! Transaction id: " + response.settle_id);
+    console.log("Settlement finished! Transaction id: " + response.settleId);
     process.exit(0);
   })
   .onError(function (errorData) {
