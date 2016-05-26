@@ -42,6 +42,7 @@ RPCGEN_DATA_FILE=/tmp/datafile.bin RPCGEN_DEBUG_MODE=1 ./generator.py
 
 """
 
+from __future__ import print_function
 from abc import ABCMeta, abstractmethod
 from google.protobuf.compiler import plugin_pb2 as plugin
 from google.protobuf.descriptor_pb2 import DescriptorProto, EnumDescriptorProto
@@ -51,6 +52,23 @@ import os
 import pickle
 import re
 import sys
+
+# The various markup tags you can use in your templates to specify the
+# way docs are generated.
+TAGS = {
+    "example": re.compile(r"// ?@example(.*?)// ?@example-end\(\)\n?", re.DOTALL),
+    "reference": re.compile(r"// ?@reference(.*?)// ?@reference-end\(\)\n?", re.DOTALL),
+    "test": re.compile(r"// ?@test(.*?)// ?@test-end\(\)\n?", re.DOTALL),
+    "lib_setup": re.compile(ur"// ?@example-lib-setup(.*?)// ?@example-lib-setup-end\(\)\n?", re.DOTALL),
+    "singles": re.compile(ur"// ?@single\((.*?)\)(.*?)// ?@single-end\(\)\n?", re.DOTALL),
+    "standalones": re.compile(ur"// ?@standalone\((.*?)\)(.*?)// ?@standalone-end\(\)\n?", re.DOTALL),
+    "example-args": re.compile(ur"// ?@example-args\((.*?)\)(.*?)// ?@example-args-end\(\)\n?", re.DOTALL),
+    "generic-tag-open": re.compile(r"[ \t]*// ?@[a-zA-Z0-9\-_]+\(.*\)[ \t]*\n"),
+    "generic-tag-close": re.compile(r"[ \t]*// ?@[a-zA-Z0-9\-_]-end+\(.*\)[ \t]*\n"),
+};
+
+def remove_tags(target):
+    return TAGS["generic-tag-open"].sub("", TAGS["generic-tag-close"].sub("", target))
 
 EXAMPLE_VALUES_FILENAME = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                        "..", "api", "common", "spec", "example-values.json")
@@ -364,6 +382,18 @@ class DDPGenerator:
         pass
 
     @abstractmethod
+    def get_type_name(self, protobuf_type):
+        """get_type_name should return a string that can be used to create a variable of the protobuf type.
+
+        E.g. for the C language, the return of this method should be
+        "const char*" when the protobuf_type is TYPE_STRING. For a
+        list of types, see
+        https://developers.google.com/protocol-buffers/docs/reference/python/google.protobuf.descriptor_pb2.FieldDescriptorProto-class
+
+        """
+        pass
+
+    @abstractmethod
     def api_header_name(self, service):
         """api_header_name should return the name of the file will hold the
         generated content that defines the API.
@@ -450,7 +480,8 @@ class DDPGenerator:
 
         """
         template_filename = "{}.{}.{}.j2".format(self.language(), typename, filetype)
-        return environment.get_template(template_filename).render(generator = self, **kwargs)
+        rendered = environment.get_template(template_filename).render(generator = self, **kwargs)
+        return rendered
 
     def generate(self, services, outputs):
         """generate is the main method of the generators.
@@ -516,14 +547,6 @@ class DDPGenerator:
         # reading purposes. The singular file (which is appended with
         # ".reference" is meant to be passed to generate-reference.js
         # in the api/common/spec directory.
-        re_example = re.compile(r"// ?@example(.*?)// ?@example-end\(\)\n?", re.DOTALL)
-        re_reference = re.compile(r"// ?@reference(.*?)// ?@reference-end\(\)\n?", re.DOTALL)
-        re_test = re.compile(r"// ?@test(.*?)// ?@test-end\(\)\n?", re.DOTALL)
-        re_lib_setup = re.compile(ur"// ?@example-lib-setup(.*?)// ?@example-lib-setup-end\(\)\n?", re.DOTALL)
-        re_singles = re.compile(ur"// ?@single\((.*?)\)(.*?)// ?@single-end\(\)\n?", re.DOTALL)
-        re_markup = re.compile(r"// @.*\n?")
-        re_standalones = re.compile(ur"// ?@standalone\((.*?)\)(.*?)// ?@standalone-end\(\)\n?", re.DOTALL)
-
         reference_content = ""
 
         singles_lines = {}
@@ -539,12 +562,12 @@ class DDPGenerator:
                 generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
 
                 content = self.render(environment, "examples", "source", method = method, service = service)
-                example_content = re_markup.sub("", re_reference.sub("", re_test.sub("", content)))
+                example_content = remove_tags(TAGS["reference"].sub("", TAGS["test"].sub("", content)))
                 generated_source_descriptor.content = self.beautify(example_content)
 
-                reference_content += re_test.sub("", re_singles.sub("", content))
+                reference_content += TAGS["test"].sub("", TAGS["singles"].sub("", content))
 
-                singles = re_singles.findall(content)
+                singles = TAGS["singles"].findall(content)
                 for single in singles:
                     identifier = single[0]
                     block = single[1]
@@ -565,14 +588,14 @@ class DDPGenerator:
 
                 generated_source_descriptor = outputs.file.add()
                 generated_source_descriptor.name = "{}/{}".format(self.output_dir("tests"), source_name)
-                test_content = re_markup.sub("", re_example.sub("", re_reference.sub("", content)))
+                test_content = remove_tags(TAGS["example"].sub("", TAGS["reference"].sub("", content)))
                 generated_source_descriptor.content = self.beautify(test_content)
 
 
         source_name = self.examples_source_name("reference")
         if source_name is not None:
-            generated_source_descriptor = outputs.file.add()
-            generated_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
+            reference_source_descriptor = outputs.file.add()
+            reference_source_descriptor.name = "{}/{}".format(self.output_dir("examples"), source_name)
 
             reference_single_content = ""
             for identifier in singles_lines:
@@ -582,11 +605,10 @@ class DDPGenerator:
                 reference_single_content += "// @{}{}\n// @{}\n\n".format(identifier, lines, end_tag)
 
             reference_content = self.beautify("{}\n\n{}".format(reference_single_content, reference_content))
-            generated_source_descriptor.content = reference_content
 
             # The reference can contain standalone examples which we
             # denote in order to render them into separate files.
-            standalones = re_standalones.findall(reference_content)
+            standalones = TAGS["standalones"].findall(reference_content)
             standalone_dedup = set()
             for standalone in standalones:
                 identifier = standalone[0]
@@ -605,6 +627,9 @@ class DDPGenerator:
                 generated_source_descriptor.content = self.beautify(block)
 
                 standalone_dedup.add(identifier)
+
+            # Remove standalones from reference.
+            reference_source_descriptor.content = re.sub(TAGS["standalones"], "", reference_content)
 
 
     def _map_raw_example_value_to_language(self, raw_value):
@@ -660,4 +685,5 @@ class DDPGenerator:
         if not field_name in self.examples:
             raise Exception("Could not find an example value for field: {}".format(field_name))
 
-        return self._map_raw_example_value_to_language(self.examples[field_name])
+        value = self._map_raw_example_value_to_language(self.examples[field_name])
+        return value

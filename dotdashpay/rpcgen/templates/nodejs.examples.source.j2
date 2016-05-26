@@ -177,6 +177,20 @@ dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
 // @standalone-end()
 // @reference-end()
 
+// @reference()
+// @example-args(Setup.Setup)
+var args = {
+  apiToken: "api-key",
+  simulate: true,
+  processorSandboxMode: true
+};
+
+// @example-args-end()
+// @example-request(Setup.Setup)
+dotdashpay.setup(args);
+// @example-request-end()
+// @reference-end()
+
 {% if method.name == "ReceivePaymentDataThenSettle" %}
 // @reference()
 // @standalone(try_api_expanded)

@@ -28,6 +28,12 @@ onError:(void(^)(DDPErrorResponse*)) callbackError
 on{{resp | remove_package}}:(void(^)({{generator.class_prefix()}}{{resp | remove_package}}*)) callback{{resp | remove_package}}
 {% endfor %}
 on{{method | option_values("completion_response") | remove_package}}:(void(^)({{generator.class_prefix()}}{{method | option_values("completion_response") | remove_package}}*)) callback{{method | option_values("completion_response") | remove_package}};
+{% if (method | option_values("update_response") | length) != 0 %}
+
+- (void) {{method.name | recase}}:({{generator.class_prefix()}}{{(method.name | find_arguments_proto_by_method_name).name}}*) args
+onError:(void(^)(DDPErrorResponse*)) callbackError
+on{{method | option_values("completion_response") | remove_package}}:(void(^)({{generator.class_prefix()}}{{method | option_values("completion_response") | remove_package}}*)) callback{{method | option_values("completion_response") | remove_package}};
+{% endif %}
 
 {% endfor %}
 

@@ -13,6 +13,9 @@ class NodeJsGenerator(DDPGenerator):
         opts.brace_style = "collapse-preserve-inline"
         return jsbeautifier.beautify(code, opts)
 
+    def get_type_name(self, protobuf_type):
+        return "var"
+
     def recase(self, variable):
         return to_camel_case(variable)
 
