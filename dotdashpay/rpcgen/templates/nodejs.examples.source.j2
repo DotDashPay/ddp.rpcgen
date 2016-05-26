@@ -33,7 +33,7 @@ describe("{{service.name}}", function() {
       dotdashpay.{{service.name|lowercase_first_letter}}.{{method.name|lowercase_first_letter}}(args)
       {% for resp in method | get_method_options %}
         .on{{resp.name}}(function (response) {
-          console.log("Received on{{resp.name}} response", JSON.stringify(response));
+          console.log("Received on{{resp.name}} response", JSON.stringify(response, null, 2));
           {% set first = True %}
           {% for field in (resp.name | find_proto_by_name).field %}
           {% if field.name != "META" %}
@@ -62,7 +62,7 @@ describe("{{service.name}}", function() {
         })
       {% endfor %}
         .onError(function (errorData) {
-          console.log("Error", JSON.stringify(errorData));
+          console.log("Error", JSON.stringify(errorData, null, 2));
           {% if not is_example %}
 
            process.exit(0);
@@ -167,11 +167,11 @@ dotdashpay.setup({
 
 dotdashpay.payment.receivePaymentDataThenSettle({cents: 100})
   .onSettled(function (response) {
-    console.log("Settlement finished! Transaction id: " + response.settleId);
+    console.log("Settlement finished! Settle response data: ", JSON.stringify(response, null, 2));
     process.exit(0);
   })
   .onError(function (errorData) {
-    console.error("Unexpected error while processing receivePaymentDataThenSettle: " + errorData);
+    console.error("Unexpected error: ", JSON.stringify(response, null, 2));
     process.exit(0);
   });
 // @standalone-end()
